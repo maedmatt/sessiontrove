@@ -59,6 +59,28 @@ def test_find_reads_the_omp_store_with_titles(tmp_path: Path) -> None:
     assert summary["preview"] == "which model are you?"
 
 
+def test_find_hides_spawned_subagent_sessions(tmp_path: Path) -> None:
+    root = tmp_path / "archive"
+    write(root / "mac/omp/sessions/chat.jsonl", LINES)
+    subagent = [
+        LINES[1],
+        {
+            "type": "session_init",
+            "id": "i",
+            "parentId": None,
+            "timestamp": "t",
+            "task": "Complete the assignment below, thoroughly:",
+            "tools": ["read", "bash"],
+        },
+        LINES[2],
+    ]
+    write(root / "mac/omp/sessions/task.jsonl", subagent)
+
+    found = omp.find(root)
+
+    assert [summary["id"] for summary, _ in found] == ["mac/omp/sessions/chat.jsonl"]
+
+
 def test_parse_keeps_the_title_and_agent(tmp_path: Path) -> None:
     session = tmp_path / "session.jsonl"
     write(session, LINES)

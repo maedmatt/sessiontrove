@@ -4,7 +4,9 @@ OpenClaw stores Pi-format sessions per agent persona under
 ``openclaw/agents/<name>/sessions``. Trajectory logs and migration
 artifacts living in the same directories lack the Pi session header and
 are skipped by the shared core. Each persona's ``sessions.json`` index
-labels some sessions; the persona name is the fallback title.
+labels some sessions; the persona name is the fallback title. Heartbeat
+polls are hidden, and user messages that OpenClaw wrote twice on
+delivery retries are collapsed to one.
 """
 
 import json
@@ -12,6 +14,8 @@ import os
 from pathlib import Path
 
 from . import pi
+
+_HEARTBEAT = "[OpenClaw heartbeat poll]"
 
 
 def find(root: Path) -> list[tuple[dict, Path]]:
@@ -34,6 +38,8 @@ def find(root: Path) -> list[tuple[dict, Path]]:
                 continue
             labels = _labels(sessions / "sessions.json")
             for summary, path in pi.scan_directory(sessions, root, "openclaw", machine):
+                if summary.get("preview", "").startswith(_HEARTBEAT):
+                    continue
                 summary["title"] = (
                     summary.get("title")
                     or labels.get(summary.get("session_id"))
@@ -46,7 +52,51 @@ def find(root: Path) -> list[tuple[dict, Path]]:
 def parse(path: Path) -> dict:
     """Parse one OpenClaw session file into neutral viewer records."""
 
-    return pi.parse(path) | {"agent": "openclaw"}
+    parsed = pi.parse(path) | {"agent": "openclaw"}
+    duplicates = _duplicates(path)
+    if duplicates:
+        redirect: dict = {}
+        records = []
+        for record in parsed["records"]:
+            parent = record.get("parentId")
+            while parent in redirect:
+                parent = redirect[parent]
+            record["parentId"] = parent
+            if record["id"] in duplicates:
+                redirect[record["id"]] = parent
+                continue
+            records.append(record)
+        parsed["records"] = records
+    return parsed
+
+
+def _duplicates(path: Path) -> set:
+    """Ids of user messages OpenClaw wrote twice on delivery retries."""
+
+    seen: set = set()
+    duplicates: set = set()
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(record, dict) or record.get("type") != "message":
+                    continue
+                message = record.get("message")
+                if not isinstance(message, dict) or message.get("role") != "user":
+                    continue
+                key = message.get("idempotencyKey")
+                if not key:
+                    continue
+                if key in seen:
+                    duplicates.add(str(record.get("id")))
+                else:
+                    seen.add(key)
+    except OSError:
+        pass
+    return duplicates
 
 
 def _labels(path: Path) -> dict:

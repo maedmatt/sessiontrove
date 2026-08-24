@@ -443,7 +443,8 @@ function renderRecord(record) {
       return el(
         "div",
         "chip-row",
-        `model: ${record.model || "?"} (${record.provider || "?"})`
+        `model: ${record.model || "?"}` +
+          (record.provider ? ` (${record.provider})` : "")
       );
     case "thinking_level":
       return el("div", "chip-row", `thinking: ${record.level || "?"}`);

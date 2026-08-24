@@ -91,6 +91,8 @@ def parse(path: Path) -> dict:
             if record.get("type") == "title":
                 meta["title"] = record.get("title") or meta.get("title")
                 continue
+            if record.get("type") == "title_change" and record.get("title"):
+                meta["title"] = record["title"]
             if record.get("type") == "session" and "session_id" not in meta:
                 meta.update(
                     session_id=record.get("id"),
@@ -142,6 +144,8 @@ def _summary(path: Path) -> dict | None:
         size = path.stat().st_size
     except OSError:
         return None
+    if preview is None:
+        return None
     return {
         "name": path.stem,
         "session_id": header.get("id"),
@@ -170,13 +174,19 @@ def _header(handle) -> tuple[dict | None, str | None]:
     return None, None
 
 
-def _preview(handle) -> str:
+def _preview(handle) -> str | None:
+    """First user text, or None for a spawned subagent's task session."""
+
     for _ in range(_PREVIEW_RECORDS):
         line = handle.readline(_LINE_LIMIT)
         if not line:
             break
         record = _json_line(line)
-        if record is None or record.get("type") != "message":
+        if record is None:
+            continue
+        if record.get("type") == "session_init":
+            return None
+        if record.get("type") != "message":
             continue
         message = record.get("message")
         if not isinstance(message, dict) or message.get("role") != "user":
@@ -213,10 +223,28 @@ def _entry(record: dict, number: int, last_id: str | None) -> dict:
         return base | {
             "kind": "model_change",
             "provider": record.get("provider"),
-            "model": record.get("modelId"),
+            "model": record.get("modelId") or record.get("model"),
         }
     if kind == "thinking_level_change":
         return base | {"kind": "thinking_level", "level": record.get("thinkingLevel")}
+    if kind == "title_change":
+        return base | {
+            "kind": "custom",
+            "customType": "title",
+            "raw": record.get("title"),
+        }
+    if kind == "custom_message":
+        return base | {
+            "kind": "custom",
+            "customType": record.get("customType") or "message",
+            "raw": record.get("content") or record.get("details"),
+        }
+    if kind == "session_init":
+        return base | {
+            "kind": "custom",
+            "customType": "session_init",
+            "raw": {"task": record.get("task"), "tools": record.get("tools")},
+        }
     if kind == "compaction":
         return base | {
             "kind": "compaction",

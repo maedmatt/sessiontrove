@@ -66,6 +66,22 @@ def test_find_walks_personas_and_labels_sessions(tmp_path: Path) -> None:
     assert found[0][0]["preview"] == "check the weather"
 
 
+def test_find_hides_heartbeat_sessions(tmp_path: Path) -> None:
+    root = tmp_path / "archive"
+    sessions = root / "mac/openclaw/agents/main/sessions"
+    write(sessions / "chat.jsonl", session_lines("s1", "real conversation"))
+    write(
+        sessions / "beat.jsonl",
+        session_lines("s2", "[OpenClaw heartbeat poll] Read HEARTBEAT.md"),
+    )
+
+    found = openclaw.find(root)
+
+    assert [s["id"] for s, _ in found] == [
+        "mac/openclaw/agents/main/sessions/chat.jsonl"
+    ]
+
+
 def test_parse_handles_string_content(tmp_path: Path) -> None:
     session = tmp_path / "session.jsonl"
     write(session, session_lines("s1", "plain string content"))
@@ -76,3 +92,29 @@ def test_parse_handles_string_content(tmp_path: Path) -> None:
     user = parsed["records"][0]
     assert user["kind"] == "user"
     assert user["parts"] == [{"type": "text", "text": "plain string content"}]
+
+
+def test_parse_collapses_delivery_retry_duplicates(tmp_path: Path) -> None:
+    session = tmp_path / "session.jsonl"
+    header = session_lines("s1", "unused")[0]
+    message = {
+        "type": "message",
+        "id": "a",
+        "parentId": None,
+        "timestamp": "t1",
+        "message": {"role": "user", "content": "hello", "idempotencyKey": "k1"},
+    }
+    duplicate = dict(message, id="b", parentId="a", timestamp="t2")
+    reply = {
+        "type": "message",
+        "id": "c",
+        "parentId": "b",
+        "timestamp": "t3",
+        "message": {"role": "assistant", "content": [{"type": "text", "text": "hi"}]},
+    }
+    write(session, [header, message, duplicate, reply])
+
+    parsed = openclaw.parse(session)
+
+    assert [record["id"] for record in parsed["records"]] == ["a", "c"]
+    assert parsed["records"][1]["parentId"] == "a"
