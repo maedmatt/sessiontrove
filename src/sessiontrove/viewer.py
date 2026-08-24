@@ -13,9 +13,15 @@ from importlib.resources import files
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from . import claude_code, codex, pi
+from . import claude_code, codex, omp, openclaw, pi
 
-READERS = {"claude-code": claude_code, "codex": codex, "pi": pi}
+READERS = {
+    "claude-code": claude_code,
+    "codex": codex,
+    "omp": omp,
+    "openclaw": openclaw,
+    "pi": pi,
+}
 
 _STATIC = {
     "index.html": "text/html; charset=utf-8",

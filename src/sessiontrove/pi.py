@@ -1,8 +1,9 @@
 """Read archived Pi sessions.
 
-This module is the Pi reader. Readers for other agents should offer the
-same two functions so the viewer stays agent-neutral: ``find(root)``
-returns ``(summary, path)`` pairs for every session in an archive, and
+This module is the Pi reader and the shared core for agents that store
+Pi-format sessions (OMP, OpenClaw). Readers offer the same two functions
+so the viewer stays agent-neutral: ``find(root)`` returns
+``(summary, path)`` pairs for every session in an archive, and
 ``parse(path)`` turns one session file into the record structure the
 viewer renders. Both only read.
 """
@@ -23,22 +24,43 @@ def find(root: Path) -> list[tuple[dict, Path]]:
     or a single machine directory. Symlinks are never followed.
     """
 
+    return scan(root, "pi", ("pi", "sessions"))
+
+
+def scan(root: Path, agent: str, parts: tuple[str, ...]) -> list[tuple[dict, Path]]:
+    """Discover Pi-format sessions in one store below each machine."""
+
     root = Path(os.path.abspath(root))
     found = []
-    for base in _bases(root):
-        sessions = base / "pi" / "sessions"
-        if (base / "pi").is_symlink() or sessions.is_symlink():
+    for base in bases(root):
+        directory = base
+        symlinked = False
+        for part in parts:
+            directory = directory / part
+            if directory.is_symlink():
+                symlinked = True
+                break
+        if symlinked or not directory.is_dir():
             continue
-        if not sessions.is_dir():
+        machine = base.name if base != root else ""
+        found += scan_directory(directory, root, agent, machine)
+    return found
+
+
+def scan_directory(
+    directory: Path, root: Path, agent: str, machine: str
+) -> list[tuple[dict, Path]]:
+    """List the Pi-format sessions inside one directory tree."""
+
+    found = []
+    for path in _session_files(directory):
+        summary = _summary(path)
+        if summary is None:
             continue
-        for path in _session_files(sessions):
-            summary = _summary(path)
-            if summary is None:
-                continue
-            summary["agent"] = "pi"
-            summary["machine"] = base.name if base != root else ""
-            summary["id"] = path.relative_to(root).as_posix()
-            found.append((summary, path))
+        summary["agent"] = agent
+        summary["machine"] = machine
+        summary["id"] = path.relative_to(root).as_posix()
+        found.append((summary, path))
     return found
 
 
@@ -66,13 +88,18 @@ def parse(path: Path) -> dict:
                 )
                 last_id = f"line-{number}"
                 continue
-            if record.get("type") == "session" and not meta:
-                meta = {
-                    "session_id": record.get("id"),
-                    "started": record.get("timestamp"),
-                    "cwd": record.get("cwd"),
-                    "version": record.get("version"),
-                }
+            if record.get("type") == "title":
+                meta["title"] = record.get("title") or meta.get("title")
+                continue
+            if record.get("type") == "session" and "session_id" not in meta:
+                meta.update(
+                    session_id=record.get("id"),
+                    started=record.get("timestamp"),
+                    cwd=record.get("cwd"),
+                    version=record.get("version"),
+                )
+                if record.get("title"):
+                    meta["title"] = record["title"]
                 continue
             entry = _entry(record, number, last_id)
             records.append(entry)
@@ -80,15 +107,17 @@ def parse(path: Path) -> dict:
     return {"agent": "pi", "meta": meta, "records": records}
 
 
-def _bases(root: Path) -> list[Path]:
-    bases = [root]
+def bases(root: Path) -> list[Path]:
+    """The archive root plus its machine directories."""
+
+    found = [root]
     if root.is_dir():
-        bases += sorted(
+        found += sorted(
             child
             for child in root.iterdir()
             if child.is_dir() and not child.is_symlink()
         )
-    return bases
+    return found
 
 
 def _session_files(sessions: Path) -> list[Path]:
@@ -106,8 +135,8 @@ def _session_files(sessions: Path) -> list[Path]:
 def _summary(path: Path) -> dict | None:
     try:
         with open(path, encoding="utf-8", errors="replace") as handle:
-            header = _json_line(handle.readline(_LINE_LIMIT))
-            if header is None or header.get("type") != "session":
+            header, title = _header(handle)
+            if header is None:
                 return None
             preview = _preview(handle)
         size = path.stat().st_size
@@ -115,11 +144,30 @@ def _summary(path: Path) -> dict | None:
         return None
     return {
         "name": path.stem,
+        "session_id": header.get("id"),
         "cwd": header.get("cwd"),
         "started": header.get("timestamp"),
+        "title": title,
         "preview": preview,
         "size": size,
     }
+
+
+def _header(handle) -> tuple[dict | None, str | None]:
+    """Find the session header, tolerating OMP's leading title record."""
+
+    title = None
+    for _ in range(4):
+        record = _json_line(handle.readline(_LINE_LIMIT))
+        if record is None:
+            return None, None
+        if record.get("type") == "title":
+            title = record.get("title") or title
+            continue
+        if record.get("type") == "session":
+            return record, record.get("title") or title
+        return None, None
+    return None, None
 
 
 def _preview(handle) -> str:

@@ -31,6 +31,8 @@
   --tag-pi: #8abeb7;
   --tag-claude: #d97757;
   --tag-codex: #b5bd68;
+  --tag-omp: #a48ac2;
+  --tag-openclaw: #d0b344;
   --muted: color-mix(in srgb, var(--text) 60%, transparent);
   --faint: color-mix(in srgb, var(--text) 38%, transparent);
   --border: color-mix(in srgb, var(--text) 16%, transparent);
@@ -50,6 +52,8 @@
     --tag-pi: #35726b;
     --tag-claude: #b0512f;
     --tag-codex: #5f6a2f;
+    --tag-omp: #5e4380;
+    --tag-openclaw: #6d5a0e;
   }
 }
 
@@ -162,6 +166,8 @@ button:hover { color: var(--text); }
 .filter-chip[data-agent="pi"].active { color: var(--tag-pi); }
 .filter-chip[data-agent="claude-code"].active { color: var(--tag-claude); }
 .filter-chip[data-agent="codex"].active { color: var(--tag-codex); }
+.filter-chip[data-agent="omp"].active { color: var(--tag-omp); }
+.filter-chip[data-agent="openclaw"].active { color: var(--tag-openclaw); }
 
 #machine {
   width: 100%;
@@ -220,6 +226,8 @@ button:hover { color: var(--text); }
 .session-agent[data-agent="pi"] { color: var(--tag-pi); }
 .session-agent[data-agent="claude-code"] { color: var(--tag-claude); }
 .session-agent[data-agent="codex"] { color: var(--tag-codex); }
+.session-agent[data-agent="omp"] { color: var(--tag-omp); }
+.session-agent[data-agent="openclaw"] { color: var(--tag-openclaw); }
 .session-age {
   color: var(--faint);
   font-size: 11px;

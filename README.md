@@ -47,8 +47,11 @@ It serves no external resources and makes no network requests beyond your own
 localhost.
 
 The interface is agent-neutral: each agent has a small reader that adapts its
-native session format to the records the viewer renders. Pi, Claude Code, and
-Codex readers exist today; further agents can be added the same way.
+native session format to the records the viewer renders. Pi, Claude Code,
+Codex, OMP, and OpenClaw readers exist today; further agents can be added the
+same way. OMP and OpenClaw store Pi-format sessions, so their readers share
+the Pi core. When an archive holds several machines, a selector in the sidebar
+narrows the list to one.
 
 ## Supported agents
 
