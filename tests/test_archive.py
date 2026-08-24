@@ -109,6 +109,82 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
     }
 
 
+def test_discovers_and_archives_openclaw_session_directories(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    state = tmp_path / "openclaw-state"
+    main_sessions = state / "agents/main/sessions"
+    worker_sessions = state / "agents/worker/sessions"
+
+    write(main_sessions / "sessions.json")
+    write(main_sessions / "session.jsonl")
+    write(main_sessions / "session.jsonl.reset.2026-08-24T18-00-00.000Z")
+    write(main_sessions / "session.jsonl.deleted.2026-08-24T18-00-00.000Z")
+    write(main_sessions / "session.trajectory.jsonl")
+    write(main_sessions / "session.trajectory-path.json")
+    write(main_sessions / ".usage-cost-cache.json")
+    write(main_sessions / "sessions.json.bak.repair")
+    write(main_sessions / "session.jsonl.migrated")
+    write(main_sessions / "session.jsonl.lock", "ephemeral")
+    write(main_sessions / ".usage-cost-cache.json.123.tmp", "ephemeral")
+    write(state / "agents/main/agent/auth-profiles.json", "secret")
+    write(state / "agents/main/agent/codex-home/sessions/rollout.jsonl", "duplicate")
+    write(worker_sessions / "worker.jsonl")
+    write(state / "agents/no-sessions/agent/runtime.json", "unrelated")
+
+    sources = default_sources(
+        home,
+        {"OPENCLAW_STATE_DIR": str(state)},
+    )
+    assert tuple(source for source in sources if source.agent == "openclaw") == (
+        Source(
+            "openclaw",
+            main_sessions,
+            Path("agents/main/sessions"),
+            ("*",),
+            ("*.lock", "*.tmp"),
+        ),
+        Source(
+            "openclaw",
+            worker_sessions,
+            Path("agents/worker/sessions"),
+            ("*",),
+            ("*.lock", "*.tmp"),
+        ),
+    )
+
+    destination = tmp_path / "archive"
+    assert archive(destination, MACHINE, sources) == {"openclaw": 10}
+    openclaw_archive = destination / MACHINE / "openclaw"
+    archived = {
+        path.relative_to(openclaw_archive).as_posix()
+        for path in openclaw_archive.rglob("*")
+        if path.is_file()
+    }
+    assert archived == {
+        "agents/main/sessions/.usage-cost-cache.json",
+        "agents/main/sessions/session.jsonl",
+        "agents/main/sessions/session.jsonl.deleted.2026-08-24T18-00-00.000Z",
+        "agents/main/sessions/session.jsonl.migrated",
+        "agents/main/sessions/session.jsonl.reset.2026-08-24T18-00-00.000Z",
+        "agents/main/sessions/session.trajectory-path.json",
+        "agents/main/sessions/session.trajectory.jsonl",
+        "agents/main/sessions/sessions.json",
+        "agents/main/sessions/sessions.json.bak.repair",
+        "agents/worker/sessions/worker.jsonl",
+    }
+
+
+def test_openclaw_defaults_to_the_state_directory_under_home(tmp_path: Path) -> None:
+    sessions = tmp_path / ".openclaw/agents/main/sessions"
+    sessions.mkdir(parents=True)
+
+    assert [
+        source.path
+        for source in default_sources(tmp_path, {})
+        if source.agent == "openclaw"
+    ] == [sessions]
+
+
 def test_machine_directories_keep_shared_archives_separate(tmp_path: Path) -> None:
     session = tmp_path / "source/session.jsonl"
     write(session, "from mac")
