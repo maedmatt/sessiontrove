@@ -39,6 +39,39 @@ sessiontrove ~/Backups/agent-sessions --machine macbookpro-m4
 Claude and Codex history files hold long-lived user prompts; project and rollout
 files hold the full transcripts.
 
+### Keep Claude Code transcripts
+
+Claude Code deletes local transcripts after 30 days by default. Sessiontrove cannot
+archive a transcript that Claude Code has already deleted. Set a long retention
+period in `~/.claude/settings.json` before relying on the archive:
+
+```json
+{
+  "cleanupPeriodDays": 36500
+}
+```
+
+`36500` keeps transcripts for roughly 100 years. Claude Code has no "forever"
+value: the minimum is `1`, and `0` is invalid. See the official
+[`cleanupPeriodDays`](https://code.claude.com/docs/en/settings-reference#cleanupperioddays)
+reference.
+
+### Keep Codex history
+
+Codex has no documented retention setting for full rollout files. Its separate
+prompt history is saved without a size limit by default. To make that behavior
+explicit, use this in `~/.codex/config.toml`:
+
+```toml
+[history]
+persistence = "save-all"
+```
+
+Do not set `history.max_bytes` if you want to retain every prompt: Codex drops the
+oldest entries when that limit is reached. This setting controls `history.jsonl`,
+not the full rollouts under `sessions` and `archived_sessions`. See the official
+[Codex configuration reference](https://developers.openai.com/codex/config-reference).
+
 ## Development
 
 ```bash
