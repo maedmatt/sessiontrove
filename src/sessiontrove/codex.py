@@ -45,6 +45,7 @@ def find(root: Path) -> list[tuple[dict, Path]]:
         codex = base / "codex"
         if codex.is_symlink():
             continue
+        titles = _titles(codex / "session_index.jsonl")
         for store in _ROOTS:
             directory = codex / store
             if directory.is_symlink() or not directory.is_dir():
@@ -53,6 +54,7 @@ def find(root: Path) -> list[tuple[dict, Path]]:
                 summary = _summary(path)
                 if summary is None:
                     continue
+                summary["title"] = titles.get(summary.get("session_id"))
                 summary["agent"] = "codex"
                 summary["machine"] = base.name if base != root else ""
                 summary["id"] = path.relative_to(root).as_posix()
@@ -137,11 +139,29 @@ def _summary(path: Path) -> dict | None:
         return None
     return {
         "name": path.stem,
+        "session_id": payload.get("id"),
         "cwd": payload.get("cwd"),
         "started": payload.get("timestamp") or header.get("timestamp"),
         "preview": preview,
         "size": size,
     }
+
+
+def _titles(path: Path) -> dict:
+    """Read the thread-name index Codex keeps next to its sessions."""
+
+    titles: dict = {}
+    if path.is_symlink() or not path.is_file():
+        return titles
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                record = _json_line(line)
+                if record and record.get("id") and record.get("thread_name"):
+                    titles[record["id"]] = record["thread_name"]
+    except OSError:
+        pass
+    return titles
 
 
 def _preview(handle) -> str:

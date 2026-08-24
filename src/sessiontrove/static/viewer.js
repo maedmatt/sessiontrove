@@ -274,8 +274,13 @@ function renderSegments(session, segments) {
 function renderMeta(session) {
   const meta = $("meta");
   meta.replaceChildren();
+  const summaryInfo = state.sessions.find((s) => s.id === session.id);
   const cwd = session.meta.cwd || session.id;
-  const title = session.meta.title || cwd.split("/").filter(Boolean).pop() || cwd;
+  const title =
+    session.meta.title ||
+    (summaryInfo && summaryInfo.title) ||
+    cwd.split("/").filter(Boolean).pop() ||
+    cwd;
   meta.append(el("h2", "", title));
   meta.append(el("div", "meta-path", cwd));
   const facts = $("facts");
@@ -302,8 +307,7 @@ function renderMeta(session) {
   add("user messages", users);
   add("records", session.records.length);
   if (cost) add("cost", "$" + cost.toFixed(2));
-  const summary = state.sessions.find((s) => s.id === session.id);
-  if (summary && summary.machine) add("machine", summary.machine);
+  if (summaryInfo && summaryInfo.machine) add("machine", summaryInfo.machine);
   add("session", session.meta.session_id, session.id);
 }
 

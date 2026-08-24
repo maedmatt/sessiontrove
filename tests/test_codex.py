@@ -46,6 +46,10 @@ def test_find_discovers_rollouts_in_both_stores(tmp_path: Path) -> None:
     )
     write(root / "mac/codex/sessions/2026/08/24/guardian.jsonl", [guardian])
     write(root / "mac/codex/history.jsonl", [{"text": "prompt"}])
+    write(
+        root / "mac/codex/session_index.jsonl",
+        [{"id": "sess-1", "thread_name": "Explain the repo", "updated_at": "x"}],
+    )
     outside = tmp_path / "outside.jsonl"
     write(outside, [META])
     (root / "mac/codex/sessions/link.jsonl").symlink_to(outside)
@@ -61,6 +65,7 @@ def test_find_discovers_rollouts_in_both_stores(tmp_path: Path) -> None:
     assert summary["machine"] == "mac"
     assert summary["cwd"] == "/home/user/project"
     assert summary["preview"] == "explain this repo"
+    assert summary["title"] == "Explain the repo"
 
 
 def test_parse_maps_and_deduplicates_the_two_streams(tmp_path: Path) -> None:

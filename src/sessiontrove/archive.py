@@ -82,6 +82,12 @@ def default_sources(
             ("*.jsonl",),
         ),
         Source(
+            "codex",
+            home / ".codex/session_index.jsonl",
+            Path("session_index.jsonl"),
+            ("*.jsonl",),
+        ),
+        Source(
             "pi",
             home / ".pi/agent/sessions",
             Path("sessions"),

@@ -55,7 +55,7 @@ Codex readers exist today; further agents can be added the same way.
 | Agent | Session data |
 | --- | --- |
 | Claude Code | Project transcripts and `history.jsonl` under `$CLAUDE_CONFIG_DIR` or `~/.claude` |
-| Codex | `~/.codex/sessions`, `~/.codex/archived_sessions`, and `~/.codex/history.jsonl` |
+| Codex | `~/.codex/sessions`, `~/.codex/archived_sessions`, `~/.codex/history.jsonl`, and the thread-name index `~/.codex/session_index.jsonl` |
 | Oh My Pi (OMP) | `sessions` under `$PI_CODING_AGENT_DIR` or `~/.omp/agent` |
 | OpenClaw | Every agent's `sessions` directory under `$OPENCLAW_STATE_DIR/agents` or `~/.openclaw/agents` |
 | Pi | `~/.pi/agent/sessions` |
