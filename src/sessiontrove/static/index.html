@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sessiontrove</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/viewer.css">
+</head>
+<body>
+<aside id="sidebar">
+  <header>
+    <h1>Sessiontrove</h1>
+    <input id="search" type="search" placeholder="Search sessions" autocomplete="off">
+  </header>
+  <ul id="session-list"></ul>
+</aside>
+<main id="main">
+  <p id="placeholder">Select a session.</p>
+  <section id="session" hidden>
+    <header id="meta"></header>
+    <nav id="branches" hidden></nav>
+    <div id="conversation"></div>
+  </section>
+</main>
+<script src="/static/viewer.js"></script>
+</body>
+</html>
