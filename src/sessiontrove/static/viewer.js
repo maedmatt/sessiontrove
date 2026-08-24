@@ -6,6 +6,7 @@ const state = {
   sessions: [],
   filter: "",
   agentFilter: null,
+  machineFilter: "",
   session: null,
   activeLeaf: null,
   expanded: false,
@@ -80,12 +81,33 @@ function renderFilters() {
   }
 }
 
+function renderMachines() {
+  const select = $("machine");
+  const machines = [
+    ...new Set(state.sessions.map((s) => s.machine).filter(Boolean)),
+  ].sort();
+  select.hidden = machines.length < 2;
+  if (select.hidden) return;
+  select.replaceChildren();
+  const all = el("option", "", `all machines (${state.sessions.length})`);
+  all.value = "";
+  select.append(all);
+  for (const machine of machines) {
+    const count = state.sessions.filter((s) => s.machine === machine).length;
+    const option = el("option", "", `${machine} (${count})`);
+    option.value = machine;
+    select.append(option);
+  }
+  select.value = state.machineFilter;
+}
+
 function renderSessionList() {
   const list = $("session-list");
   list.replaceChildren();
   const needle = state.filter.trim().toLowerCase();
   for (const summary of state.sessions) {
     if (state.agentFilter && summary.agent !== state.agentFilter) continue;
+    if (state.machineFilter && summary.machine !== state.machineFilter) continue;
     const haystack = [
       summary.title,
       summary.cwd,
@@ -773,6 +795,10 @@ async function init() {
     if (event.key === "e") toggleExpand();
   });
   $("toggle-expand").addEventListener("click", toggleExpand);
+  $("machine").addEventListener("change", (event) => {
+    state.machineFilter = event.target.value;
+    renderSessionList();
+  });
   try {
     state.sessions = await fetchJSON("/api/sessions");
   } catch (error) {
@@ -782,6 +808,7 @@ async function init() {
     return;
   }
   renderFilters();
+  renderMachines();
   renderSessionList();
   const agents = new Set(state.sessions.map((s) => s.agent)).size;
   $("placeholder-stats").textContent = state.sessions.length

@@ -163,6 +163,22 @@ button:hover { color: var(--text); }
 .filter-chip[data-agent="claude-code"].active { color: var(--tag-claude); }
 .filter-chip[data-agent="codex"].active { color: var(--tag-codex); }
 
+#machine {
+  width: 100%;
+  margin-top: 10px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+#machine:hover { color: var(--text); }
+
 #session-list {
   margin: 0;
   padding: 6px 0;
