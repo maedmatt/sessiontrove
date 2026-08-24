@@ -16,6 +16,7 @@ class Source:
     path: Path
     target: Path
     patterns: tuple[str, ...]
+    exclude_patterns: tuple[str, ...] = ()
 
 
 _SAFE_MACHINE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -29,6 +30,28 @@ def default_sources(
     home = (home or Path.home()).expanduser()
     environ = os.environ if environ is None else environ
     claude_home = Path(environ.get("CLAUDE_CONFIG_DIR", home / ".claude")).expanduser()
+    openclaw_override = environ.get("OPENCLAW_STATE_DIR", "").strip()
+    openclaw_home = Path(openclaw_override or home / ".openclaw").expanduser()
+    openclaw_agents = openclaw_home / "agents"
+    openclaw_sources = []
+    if openclaw_agents.is_dir() and not openclaw_agents.is_symlink():
+        for agent_path in sorted(openclaw_agents.iterdir(), key=lambda path: path.name):
+            sessions = agent_path / "sessions"
+            if (
+                agent_path.is_dir()
+                and not agent_path.is_symlink()
+                and sessions.is_dir()
+                and not sessions.is_symlink()
+            ):
+                openclaw_sources.append(
+                    Source(
+                        "openclaw",
+                        sessions,
+                        Path("agents") / agent_path.name / "sessions",
+                        ("*",),
+                        ("*.lock", "*.tmp"),
+                    )
+                )
 
     return (
         Source(
@@ -62,6 +85,7 @@ def default_sources(
             Path("sessions"),
             ("*.jsonl",),
         ),
+        *openclaw_sources,
     )
 
 
@@ -70,7 +94,11 @@ def _absolute(path: Path) -> Path:
 
 
 def _matches(relative: Path, source: Source) -> bool:
-    return any(fnmatch.fnmatch(relative.name, pattern) for pattern in source.patterns)
+    return any(
+        fnmatch.fnmatch(relative.name, pattern) for pattern in source.patterns
+    ) and not any(
+        fnmatch.fnmatch(relative.name, pattern) for pattern in source.exclude_patterns
+    )
 
 
 def _files(source: Source) -> list[tuple[Path, Path]]:

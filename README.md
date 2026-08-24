@@ -30,9 +30,10 @@ sessiontrove ~/Backups/agent-sessions --machine macbookpro-m4
 | --- | --- |
 | Claude Code | Project transcripts and `history.jsonl` under `$CLAUDE_CONFIG_DIR` or `~/.claude` |
 | Codex | `~/.codex/sessions`, `~/.codex/archived_sessions`, and `~/.codex/history.jsonl` |
+| OpenClaw | Every agent's `sessions` directory under `$OPENCLAW_STATE_DIR/agents` or `~/.openclaw/agents` |
 | Pi | `~/.pi/agent/sessions` |
 
-Claude and Codex history files hold long-lived user prompts; project and rollout files hold the full transcripts.
+Claude and Codex history files hold long-lived user prompts; project and rollout files hold the full transcripts. OpenClaw archives include its session index, transcripts, reset and deleted sessions, trajectories, caches, and migration or repair artifacts. Temporary and lock files are skipped.
 
 ### Keep Claude Code transcripts
 
