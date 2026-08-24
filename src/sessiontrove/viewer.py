@@ -21,11 +21,15 @@ _STATIC = {
     "index.html": "text/html; charset=utf-8",
     "viewer.css": "text/css; charset=utf-8",
     "viewer.js": "text/javascript; charset=utf-8",
+    "fonts/FiraCode-Regular.woff2": "font/woff2",
+    "fonts/FiraCode-Medium.woff2": "font/woff2",
+    "fonts/FiraCode-SemiBold.woff2": "font/woff2",
+    "fonts/LICENSE-FiraCode.txt": "text/plain; charset=utf-8",
 }
 _SECURITY_HEADERS = {
     "Content-Security-Policy": (
         "default-src 'none'; style-src 'self'; script-src 'self'; "
-        "img-src 'self' data:; connect-src 'self'"
+        "img-src 'self' data:; font-src 'self'; connect-src 'self'"
     ),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",

@@ -10,8 +10,8 @@
 <body>
 <aside id="sidebar">
   <header>
-    <h1>Sessiontrove</h1>
-    <input id="search" type="search" placeholder="Search sessions" autocomplete="off">
+    <h1 id="logo">sessiontrove</h1>
+    <input id="search" type="search" placeholder="search" autocomplete="off">
   </header>
   <ul id="session-list"></ul>
 </aside>
@@ -19,6 +19,10 @@
   <p id="placeholder">Select a session.</p>
   <section id="session" hidden>
     <header id="meta"></header>
+    <div id="controls">
+      <button id="toggle-thinking" title="toggle reasoning (t)">reasoning</button>
+      <button id="toggle-tools" title="toggle tool output (o)">tool output</button>
+    </div>
     <nav id="branches" hidden></nav>
     <div id="conversation"></div>
   </section>

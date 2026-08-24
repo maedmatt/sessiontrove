@@ -34,8 +34,11 @@ This starts a read-only server on `127.0.0.1` with an automatic port and opens
 the browser. Use `--port` to pick a port and `--no-browser` to only print the
 URL. The viewer shows a searchable session list and, per session, the
 conversation, reasoning, tool calls and results, the branch tree, and basic
-metadata such as model and cost. Reasoning and tool output are collapsible, and
-records the viewer does not recognize fall back to their raw JSON.
+metadata such as model and cost. Reasoning and tool output are collapsible,
+one block at a time or all at once with the `t` and `o` keys, and records the
+viewer does not recognize fall back to their raw JSON. It follows the system
+light or dark preference and ships the [Fira Code](https://github.com/tonsky/FiraCode)
+font, which is redistributed under the SIL Open Font License.
 
 The viewer never modifies the archive: sessions are parsed in memory only when
 opened, symlinks are ignored, and files outside the archive are never served.

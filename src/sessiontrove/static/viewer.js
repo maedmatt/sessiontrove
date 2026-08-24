@@ -2,7 +2,14 @@
 
 /* All transcript content is rendered with textContent, never innerHTML. */
 
-const state = { sessions: [], filter: "", session: null, activeLeaf: null };
+const state = {
+  sessions: [],
+  filter: "",
+  session: null,
+  activeLeaf: null,
+  showThinking: false,
+  showTools: false,
+};
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,6 +32,25 @@ function fmtDate(value) {
   return isNaN(date) ? String(value) : date.toLocaleString();
 }
 
+function fmtAge(value) {
+  const date = new Date(value);
+  if (isNaN(date)) return "";
+  const seconds = Math.max(0, (Date.now() - date.getTime()) / 1000);
+  const steps = [
+    [60, "now"],
+    [3600, (s) => `${Math.floor(s / 60)}m`],
+    [86400, (s) => `${Math.floor(s / 3600)}h`],
+    [604800, (s) => `${Math.floor(s / 86400)}d`],
+    [2629800, (s) => `${Math.floor(s / 604800)}w`],
+    [31557600, (s) => `${Math.floor(s / 2629800)}mo`],
+    [Infinity, (s) => `${Math.floor(s / 31557600)}y`],
+  ];
+  for (const [limit, label] of steps) {
+    if (seconds < limit) return typeof label === "string" ? label : label(seconds);
+  }
+  return "";
+}
+
 /* Session list */
 
 function sessionTitle(summary) {
@@ -45,10 +71,11 @@ function renderSessionList() {
     if (state.session && state.session.id === summary.id) {
       item.classList.add("active");
     }
-    item.append(el("div", "session-title", sessionTitle(summary)));
-    const line = el("div", "session-sub");
-    line.append(el("span", "", fmtDate(summary.started)));
-    if (summary.machine) line.append(el("span", "chip", summary.machine));
+    const line = el("div", "session-line");
+    line.append(el("span", "session-title", sessionTitle(summary)));
+    const age = el("span", "session-age", fmtAge(summary.started));
+    age.title = fmtDate(summary.started);
+    line.append(age);
     item.append(line);
     if (summary.preview) {
       item.append(el("div", "session-preview", summary.preview));
@@ -207,7 +234,9 @@ function renderSegments(session, segments) {
 function renderMeta(session) {
   const meta = $("meta");
   meta.replaceChildren();
-  meta.append(el("h2", "", session.meta.cwd || session.id));
+  const cwd = session.meta.cwd || session.id;
+  meta.append(el("h2", "", cwd.split("/").filter(Boolean).pop() || cwd));
+  meta.append(el("div", "meta-path", cwd));
   const facts = el("div", "facts");
   const add = (label, value) => {
     if (value === undefined || value === null || value === "") return;
@@ -277,19 +306,43 @@ function renderMessage(record, cls, label) {
   const card = el("article", `record ${cls}`);
   const head = el("header", "record-head");
   head.append(el("span", "role", label));
-  if (record.timestamp) head.append(el("time", "", fmtDate(record.timestamp)));
+  if (record.timestamp) {
+    const date = new Date(record.timestamp);
+    const time = el(
+      "time",
+      "",
+      isNaN(date)
+        ? ""
+        : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
+    time.title = fmtDate(record.timestamp);
+    head.append(time);
+  }
   card.append(head);
-  appendParts(card, record.parts || []);
+  appendParts(card, record.parts || [], cls === "assistant");
   return card;
 }
 
 function renderToolResult(record) {
   const card = el("article", "record tool-result" + (record.isError ? " error" : ""));
   const body = el("div", "tool-body");
-  appendParts(body, record.parts || []);
+  appendParts(body, record.parts || [], false);
+  let lines = 0;
+  let images = 0;
+  for (const part of record.parts || []) {
+    if (part.type === "text" && part.text) lines += part.text.split("\n").length;
+    if (part.type === "image") images += 1;
+  }
+  const stats = [
+    lines ? `${lines} lines` : "",
+    images ? `${images} image${images > 1 ? "s" : ""}` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
   const label =
-    (record.isError ? "tool error: " : "tool result: ") + (record.toolName || "?");
-  card.append(collapsible(label, body));
+    `${record.toolName || "?"} ${record.isError ? "failed" : "output"}` +
+    (stats ? ` · ${stats}` : "");
+  card.append(collapsible(label, body, "output"));
   return card;
 }
 
@@ -298,7 +351,7 @@ function renderCompaction(record) {
   const label =
     "compaction" +
     (record.tokensBefore ? ` (${record.tokensBefore} tokens before)` : "");
-  card.append(collapsible(label, el("div", "text", record.summary || "")));
+  card.append(collapsible(label, renderMarkdown(record.summary)));
   return card;
 }
 
@@ -308,15 +361,39 @@ function renderRaw(record, label, raw) {
   return card;
 }
 
-function appendParts(target, parts) {
+function toolCallLabel(part) {
+  let args = part.arguments;
+  if (typeof args === "string") {
+    try {
+      args = JSON.parse(args);
+    } catch {
+      args = null;
+    }
+  }
+  if (args && typeof args === "object") {
+    const command = String(args.command || args.cmd || "").split("\n")[0];
+    if (command) return `$ ${command.slice(0, 120)}`;
+    const detail = String(
+      args.path || args.file_path || args.pattern || ""
+    ).split("\n")[0];
+    if (detail) return `${part.name || "tool"} ${detail.slice(0, 120)}`;
+  }
+  return part.name || "tool";
+}
+
+function appendParts(target, parts, markdown) {
   for (const part of parts) {
     if (part.type === "text") {
-      target.append(el("div", "text", part.text || ""));
+      target.append(
+        markdown ? renderMarkdown(part.text) : el("div", "text", part.text || "")
+      );
     } else if (part.type === "thinking") {
-      target.append(collapsible("reasoning", el("div", "text thinking", part.text || "")));
+      target.append(
+        collapsible("reasoning", renderMarkdown(part.text), "thinking")
+      );
     } else if (part.type === "tool_call") {
       target.append(
-        collapsible(`tool call: ${part.name || "?"}`, renderArguments(part.arguments))
+        collapsible(toolCallLabel(part), renderArguments(part.arguments), "call")
       );
     } else if (part.type === "image") {
       target.append(renderImage(part));
@@ -326,11 +403,201 @@ function appendParts(target, parts) {
   }
 }
 
-function collapsible(label, body) {
-  const details = el("details", "collapsible");
+function collapsible(label, body, cls) {
+  const details = el("details", "collapsible" + (cls ? " " + cls : ""));
+  if (cls === "thinking" && state.showThinking) details.open = true;
+  if ((cls === "call" || cls === "output") && state.showTools) details.open = true;
   details.append(el("summary", "", label));
   details.append(body);
   return details;
+}
+
+function toggleAll(kind) {
+  if (kind === "thinking") {
+    state.showThinking = !state.showThinking;
+    for (const details of document.querySelectorAll(".collapsible.thinking")) {
+      details.open = state.showThinking;
+    }
+    $("toggle-thinking").classList.toggle("on", state.showThinking);
+  } else {
+    state.showTools = !state.showTools;
+    const selector = ".collapsible.call, .collapsible.output";
+    for (const details of document.querySelectorAll(selector)) {
+      details.open = state.showTools;
+    }
+    $("toggle-tools").classList.toggle("on", state.showTools);
+  }
+}
+
+/* Minimal markdown renderer. Builds DOM nodes only, never HTML strings. */
+
+function renderMarkdown(text) {
+  const root = el("div", "md");
+  const lines = String(text || "").split("\n");
+  let index = 0;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trim()) {
+      index += 1;
+      continue;
+    }
+    const fence = line.match(/^\s*(```|~~~)\s*(\S*)\s*$/);
+    if (fence) {
+      const body = [];
+      index += 1;
+      while (index < lines.length && !lines[index].trim().startsWith(fence[1])) {
+        body.push(lines[index]);
+        index += 1;
+      }
+      index += 1;
+      const pre = el("pre", "code-block", body.join("\n"));
+      if (fence[2]) pre.dataset.lang = fence[2];
+      root.append(pre);
+      continue;
+    }
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      const node = el("h" + (Math.min(heading[1].length, 4) + 2));
+      inline(node, heading[2]);
+      root.append(node);
+      index += 1;
+      continue;
+    }
+    if (/^\s*([-*_])\s*(\1\s*){2,}$/.test(line)) {
+      root.append(el("hr"));
+      index += 1;
+      continue;
+    }
+    if (/^\s*>/.test(line)) {
+      const body = [];
+      while (index < lines.length && /^\s*>/.test(lines[index])) {
+        body.push(lines[index].replace(/^\s*>\s?/, ""));
+        index += 1;
+      }
+      const quote = el("blockquote");
+      quote.append(renderMarkdown(body.join("\n")));
+      root.append(quote);
+      continue;
+    }
+    if (_listItem(line)) {
+      index = appendList(root, lines, index);
+      continue;
+    }
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      index = appendTable(root, lines, index);
+      continue;
+    }
+    const body = [];
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !_listItem(lines[index]) &&
+      !/^\s*(#{1,6}\s|>|```|~~~|\|.*\|\s*$)/.test(lines[index])
+    ) {
+      body.push(lines[index]);
+      index += 1;
+    }
+    const paragraph = el("p");
+    inline(paragraph, body.join("\n"));
+    root.append(paragraph);
+  }
+  return root;
+}
+
+function _listItem(line) {
+  return line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+}
+
+function appendList(root, lines, index) {
+  const stack = [];
+  let last = null;
+  while (index < lines.length) {
+    const match = _listItem(lines[index]);
+    if (!match) {
+      if (last && lines[index].trim() && /^\s+/.test(lines[index])) {
+        last.append(" ");
+        inline(last, lines[index].trim());
+        index += 1;
+        continue;
+      }
+      break;
+    }
+    const depth = Math.floor(match[1].length / 2);
+    const ordered = /\d/.test(match[2]);
+    while (stack.length > depth + 1) stack.pop();
+    if (stack.length < depth + 1 || !stack.length) {
+      const list = el(ordered ? "ol" : "ul");
+      (stack.length ? last || stack[stack.length - 1] : root).append(list);
+      stack.push(list);
+    }
+    last = el("li");
+    inline(last, match[3]);
+    stack[stack.length - 1].append(last);
+    index += 1;
+  }
+  return index;
+}
+
+function appendTable(root, lines, index) {
+  const rows = [];
+  while (index < lines.length && /^\s*\|.*\|\s*$/.test(lines[index])) {
+    rows.push(
+      lines[index]
+        .trim()
+        .replace(/^\||\|$/g, "")
+        .split("|")
+        .map((cell) => cell.trim())
+    );
+    index += 1;
+  }
+  const separator = rows.length > 1 && rows[1].every((c) => /^:?-+:?$/.test(c));
+  const table = el("table");
+  rows.forEach((cells, rowIndex) => {
+    if (separator && rowIndex === 1) return;
+    const row = el("tr");
+    for (const cell of cells) {
+      const node = el(separator && rowIndex === 0 ? "th" : "td");
+      inline(node, cell);
+      row.append(node);
+    }
+    table.append(row);
+  });
+  root.append(table);
+  return index;
+}
+
+function inline(target, text) {
+  const pattern =
+    /(`+)([\s\S]*?)\1|\*\*([^*]+)\*\*|(?<![\w*])\*([^*\n]+)\*|(?<!\w)_([^_\n]+)_|\[([^\]]+)\]\(([^)\s]+)\)/g;
+  let last = 0;
+  let match;
+  while ((match = pattern.exec(text))) {
+    if (match.index > last) target.append(text.slice(last, match.index));
+    if (match[2] !== undefined) {
+      target.append(el("code", "", match[2]));
+    } else if (match[3] !== undefined) {
+      const strong = el("strong");
+      inline(strong, match[3]);
+      target.append(strong);
+    } else if (match[4] !== undefined || match[5] !== undefined) {
+      const em = el("em");
+      inline(em, match[4] ?? match[5]);
+      target.append(em);
+    } else {
+      target.append(mdLink(match[6], match[7]));
+    }
+    last = pattern.lastIndex;
+  }
+  if (last < text.length) target.append(text.slice(last));
+}
+
+function mdLink(label, href) {
+  if (!/^https?:\/\//i.test(href)) return el("span", "", label);
+  const anchor = el("a", "", label);
+  anchor.href = href;
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
+  return anchor;
 }
 
 function rawPre(value) {
@@ -372,6 +639,13 @@ async function init() {
     state.filter = event.target.value;
     renderSessionList();
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.target.closest("input") || event.metaKey || event.ctrlKey) return;
+    if (event.key === "t") toggleAll("thinking");
+    if (event.key === "o") toggleAll("tools");
+  });
+  $("toggle-thinking").addEventListener("click", () => toggleAll("thinking"));
+  $("toggle-tools").addEventListener("click", () => toggleAll("tools"));
   try {
     state.sessions = await fetchJSON("/api/sessions");
   } catch (error) {
