@@ -233,6 +233,7 @@ button:hover { color: var(--text); }
   column-gap: 40px;
   align-items: start;
 }
+#session[hidden] { display: none; }
 #meta { grid-column: 1; }
 #content { grid-column: 1; min-width: 0; }
 #context {
