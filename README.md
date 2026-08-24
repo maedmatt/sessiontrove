@@ -44,7 +44,7 @@ Claude Code deletes local transcripts after 30 days by default. Sessiontrove can
   "cleanupPeriodDays": 36500
 }
 ```
-`36500` keeps transcripts for roughly 100 years. Claude Code has no "forever" value: the minimum is `1`, and `0` is invalid. See the official `cleanupPeriodDays`](https://code.claude.com/docs/en/settings-reference#cleanupperioddays) reference.
+`36500` keeps transcripts for roughly 100 years. Claude Code has no "forever" value: the minimum is `1`, and `0` is invalid. See the official [`cleanupPeriodDays`](https://code.claude.com/docs/en/settings-reference#cleanupperioddays) reference.
 
 ### Keep Codex history
 
