@@ -777,6 +777,11 @@ async function init() {
   }
   renderFilters();
   renderSessionList();
+  const agents = new Set(state.sessions.map((s) => s.agent)).size;
+  $("placeholder-stats").textContent = state.sessions.length
+    ? `${state.sessions.length} sessions from ` +
+      `${agents} agent${agents > 1 ? "s" : ""} in this archive`
+    : "This archive holds no sessions yet.";
   if (location.hash.length > 1) {
     openSession(decodeURIComponent(location.hash.slice(1)));
   }

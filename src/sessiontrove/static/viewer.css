@@ -225,7 +225,28 @@ button:hover { color: var(--text); }
   padding: var(--lh) 32px;
 }
 
-#placeholder { color: var(--faint); }
+#placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  max-width: 52ch;
+  margin: 0 auto;
+  color: var(--faint);
+  text-align: center;
+}
+#placeholder[hidden] { display: none; }
+#placeholder p { margin: 0; }
+#placeholder-title {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+#placeholder-stats { font-size: 11px; }
 
 #session {
   display: grid;
