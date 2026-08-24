@@ -80,7 +80,9 @@ function renderSessionList() {
     }
     const line = el("div", "session-line");
     line.append(el("span", "session-title", sessionTitle(summary)));
-    line.append(el("span", "session-agent", summary.agent));
+    const tag = el("span", "session-agent", summary.agent);
+    tag.dataset.agent = summary.agent;
+    line.append(tag);
     const age = el("span", "session-age", fmtAge(summary.started));
     age.title = fmtDate(summary.started);
     line.append(age);
