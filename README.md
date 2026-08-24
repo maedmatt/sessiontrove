@@ -2,17 +2,17 @@
 
 Sessiontrove copies local coding-agent conversations into one private archive. It keeps each agent's raw format, updates changed files, and never deletes an archived file when the original disappears.
 
-It does not upload, parse, or normalize conversations. 
+It does not upload or normalize conversations. A built-in viewer lets you read the archive in the browser.
 
 >[!IMPORTANT] 
 >**For now, its purpose is simple**: preserve your own conversations as source data you could later use to fine-tune future agents on how you work.
 
-## Use
+## Archive
 
 Sessiontrove requires Python 3.11 or newer. From this repository, run:
 
 ```bash
-uv run sessiontrove ~/Backups/agent-sessions --machine macbookpro-m4
+uv run sessiontrove archive ~/Backups/agent-sessions --machine macbookpro-m4
 ```
 
 The machine name creates a stable top-level directory, such as `agent-sessions/macbookpro-m4`, so several computers can share one archive. Use the same name on every run. Missing agents are skipped automatically. Archive directories use mode `0700`, and copied files use `0600`.
@@ -21,15 +21,41 @@ To install the command:
 
 ```bash
 uv tool install .
-sessiontrove ~/Backups/agent-sessions --machine macbookpro-m4
+sessiontrove archive ~/Backups/agent-sessions --machine macbookpro-m4
 ```
+
+## View
+
+```bash
+sessiontrove view ~/Backups/agent-sessions
+```
+
+This starts a read-only server on `127.0.0.1` with an automatic port and opens
+the browser. Use `--port` to pick a port and `--no-browser` to only print the
+URL. The viewer shows a searchable session list and, per session, the
+conversation, reasoning, tool calls and results, the branch tree, and basic
+metadata such as model and cost. What the agent did within a turn starts
+collapsed behind a one-line summary; open blocks one at a time, or everything
+at once with the expand-all button or the `e` key. Records the viewer does
+not recognize fall back to their raw JSON. It follows the system
+light or dark preference and ships the [Fira Code](https://github.com/tonsky/FiraCode)
+font, which is redistributed under the SIL Open Font License.
+
+The viewer never modifies the archive: sessions are parsed in memory only when
+opened, symlinks are ignored, and files outside the archive are never served.
+It serves no external resources and makes no network requests beyond your own
+localhost.
+
+The interface is agent-neutral: each agent has a small reader that adapts its
+native session format to the records the viewer renders. Pi, Claude Code, and
+Codex readers exist today; further agents can be added the same way.
 
 ## Supported agents
 
 | Agent | Session data |
 | --- | --- |
 | Claude Code | Project transcripts and `history.jsonl` under `$CLAUDE_CONFIG_DIR` or `~/.claude` |
-| Codex | `~/.codex/sessions`, `~/.codex/archived_sessions`, and `~/.codex/history.jsonl` |
+| Codex | `~/.codex/sessions`, `~/.codex/archived_sessions`, `~/.codex/history.jsonl`, and the thread-name index `~/.codex/session_index.jsonl` |
 | Oh My Pi (OMP) | `sessions` under `$PI_CODING_AGENT_DIR` or `~/.omp/agent` |
 | OpenClaw | Every agent's `sessions` directory under `$OPENCLAW_STATE_DIR/agents` or `~/.openclaw/agents` |
 | Pi | `~/.pi/agent/sessions` |

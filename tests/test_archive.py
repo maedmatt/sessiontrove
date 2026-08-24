@@ -54,6 +54,12 @@ def test_source_registry_covers_each_persistent_conversation_store(
             ("*.jsonl",),
         ),
         Source(
+            "codex",
+            home / ".codex/session_index.jsonl",
+            Path("session_index.jsonl"),
+            ("*.jsonl",),
+        ),
+        Source(
             "pi",
             home / ".pi/agent/sessions",
             Path("sessions"),
@@ -85,7 +91,7 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
     write(home / ".codex/sessions/2026/08/24/rollout.jsonl")
     write(home / ".codex/archived_sessions/archived.jsonl")
     write(home / ".codex/history.jsonl", '{"text":"old prompt"}\n')
-    write(home / ".codex/session_index.jsonl", "not a conversation")
+    write(home / ".codex/session_index.jsonl", '{"id":"x","thread_name":"Title"}\n')
     write(home / ".codex/auth.json", "secret")
 
     write(home / ".pi/agent/sessions/project/session.jsonl")
@@ -103,7 +109,7 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
 
     assert results == {
         "claude-code": 4,
-        "codex": 3,
+        "codex": 4,
         "pi": 1,
         "omp": 4,
     }
@@ -119,6 +125,7 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
         "macbookpro-m4/claude-code/projects/project/session/subagents/agent-one.meta.json",
         "macbookpro-m4/codex/archived_sessions/archived.jsonl",
         "macbookpro-m4/codex/history.jsonl",
+        "macbookpro-m4/codex/session_index.jsonl",
         "macbookpro-m4/codex/sessions/2026/08/24/rollout.jsonl",
         "macbookpro-m4/pi/sessions/project/session.jsonl",
         "macbookpro-m4/omp/sessions/project/session.jsonl",

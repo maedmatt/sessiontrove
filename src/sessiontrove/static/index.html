@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sessiontrove</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/viewer.css">
+</head>
+<body>
+<aside id="sidebar">
+  <header>
+    <h1 id="logo">sessiontrove</h1>
+    <input id="search" type="search" placeholder="search" autocomplete="off">
+    <div id="filters" hidden></div>
+    <select id="machine" hidden></select>
+  </header>
+  <ul id="session-list"></ul>
+</aside>
+<main id="main">
+  <div id="placeholder">
+    <p id="placeholder-title">select a session</p>
+    <p>Pick a conversation on the left to dig into it:
+       every message, tool call, and branch, exactly as archived.</p>
+    <p id="placeholder-stats"></p>
+  </div>
+  <section id="session" hidden>
+    <header id="meta"></header>
+    <aside id="context">
+      <div id="controls">
+        <button id="toggle-expand" title="expand everything (e)">expand all</button>
+      </div>
+      <div id="facts"></div>
+      <details id="branches" hidden>
+        <summary id="branches-summary">branches</summary>
+        <p id="branches-hint">
+          Points where an edited message split the conversation.
+          The marked path is the one shown below; click a row to switch.
+        </p>
+        <div id="branches-body"></div>
+      </details>
+    </aside>
+    <div id="content">
+      <div id="conversation"></div>
+    </div>
+  </section>
+</main>
+<script src="/static/viewer.js"></script>
+</body>
+</html>
