@@ -1,0 +1,24 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: false
+      - run: uv run --python ${{ matrix.python-version }} ruff check .
+      - run: uv run --python ${{ matrix.python-version }} ruff format --check .
+      - run: uv run --python ${{ matrix.python-version }} pytest
+      - run: uv run --python ${{ matrix.python-version }} sessiontrove --help

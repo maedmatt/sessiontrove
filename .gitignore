@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+dist/
+
+# Conversation archives are private.
+*.jsonl
+*.db
+*.sqlite
+*.sqlite3
+*.vscdb
+archive/
+Backups/
+
+.DS_Store
+.idea/
+.vscode/
