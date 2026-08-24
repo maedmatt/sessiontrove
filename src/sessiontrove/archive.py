@@ -30,6 +30,8 @@ def default_sources(
     home = (home or Path.home()).expanduser()
     environ = os.environ if environ is None else environ
     claude_home = Path(environ.get("CLAUDE_CONFIG_DIR", home / ".claude")).expanduser()
+    omp_override = environ.get("PI_CODING_AGENT_DIR", "").strip()
+    omp_home = Path(omp_override or home / ".omp/agent").expanduser()
     openclaw_override = environ.get("OPENCLAW_STATE_DIR", "").strip()
     openclaw_home = Path(openclaw_override or home / ".openclaw").expanduser()
     openclaw_agents = openclaw_home / "agents"
@@ -84,6 +86,13 @@ def default_sources(
             home / ".pi/agent/sessions",
             Path("sessions"),
             ("*.jsonl",),
+        ),
+        Source(
+            "omp",
+            omp_home / "sessions",
+            Path("sessions"),
+            ("*",),
+            ("*.lock", "*.tmp"),
         ),
         *openclaw_sources,
     )

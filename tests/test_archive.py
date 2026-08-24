@@ -59,6 +59,13 @@ def test_source_registry_covers_each_persistent_conversation_store(
             Path("sessions"),
             ("*.jsonl",),
         ),
+        Source(
+            "omp",
+            home / ".omp/agent/sessions",
+            Path("sessions"),
+            ("*",),
+            ("*.lock", "*.tmp"),
+        ),
     )
 
 
@@ -84,6 +91,13 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
     write(home / ".pi/agent/sessions/project/session.jsonl")
     write(home / ".pi/agent/settings.json", "not a conversation")
 
+    write(home / ".omp/agent/sessions/project/session.jsonl")
+    write(home / ".omp/agent/sessions/project/session/worker.jsonl")
+    write(home / ".omp/agent/sessions/project/session/worker.md")
+    write(home / ".omp/agent/sessions/project/session/1.bash.log")
+    write(home / ".omp/agent/sessions/project/session.jsonl.lock", "ephemeral")
+    write(home / ".omp/agent/history.db", "not a conversation")
+
     destination = tmp_path / "archive"
     results = archive(destination, MACHINE, default_sources(home, {}))
 
@@ -91,6 +105,7 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
         "claude-code": 4,
         "codex": 3,
         "pi": 1,
+        "omp": 4,
     }
     archived = {
         path.relative_to(destination).as_posix()
@@ -106,7 +121,23 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
         "macbookpro-m4/codex/history.jsonl",
         "macbookpro-m4/codex/sessions/2026/08/24/rollout.jsonl",
         "macbookpro-m4/pi/sessions/project/session.jsonl",
+        "macbookpro-m4/omp/sessions/project/session.jsonl",
+        "macbookpro-m4/omp/sessions/project/session/worker.jsonl",
+        "macbookpro-m4/omp/sessions/project/session/worker.md",
+        "macbookpro-m4/omp/sessions/project/session/1.bash.log",
     }
+
+
+def test_omp_honors_custom_agent_directory(tmp_path: Path) -> None:
+    agent_dir = tmp_path / "omp-agent"
+
+    assert [
+        source.path
+        for source in default_sources(
+            tmp_path / "home", {"PI_CODING_AGENT_DIR": str(agent_dir)}
+        )
+        if source.agent == "omp"
+    ] == [agent_dir / "sessions"]
 
 
 def test_discovers_and_archives_openclaw_session_directories(tmp_path: Path) -> None:
