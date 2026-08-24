@@ -499,7 +499,9 @@ function toolCallLabel(part) {
     }
   }
   if (args && typeof args === "object") {
-    const command = String(args.command || args.cmd || "").split("\n")[0];
+    let command = args.command || args.cmd || "";
+    if (Array.isArray(command)) command = command.join(" ");
+    command = String(command).split("\n")[0];
     if (command) return `$ ${command.slice(0, 120)}`;
     const detail = String(
       args.path || args.file_path || args.pattern || ""
