@@ -1,13 +1,10 @@
 """Archive local coding-agent sessions."""
 
-import filecmp
 import fnmatch
 import os
 import re
 import shutil
-import sqlite3
 from collections.abc import Mapping, Sequence
-from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -19,7 +16,6 @@ class Source:
     path: Path
     target: Path
     patterns: tuple[str, ...]
-    sqlite: bool = False
 
 
 _SAFE_MACHINE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -32,7 +28,6 @@ def default_sources(
 
     home = (home or Path.home()).expanduser()
     environ = os.environ if environ is None else environ
-    data_home = Path(environ.get("XDG_DATA_HOME", home / ".local/share")).expanduser()
     claude_home = Path(environ.get("CLAUDE_CONFIG_DIR", home / ".claude")).expanduser()
 
     return (
@@ -60,19 +55,6 @@ def default_sources(
             home / ".codex/history.jsonl",
             Path("history.jsonl"),
             ("*.jsonl",),
-        ),
-        Source(
-            "opencode",
-            data_home / "opencode/storage",
-            Path("storage"),
-            ("*.json",),
-        ),
-        Source(
-            "opencode",
-            data_home / "opencode/opencode.db",
-            Path("opencode.db"),
-            ("*.db",),
-            sqlite=True,
         ),
         Source(
             "pi",
@@ -147,32 +129,6 @@ def _copy(source: Path, destination: Path) -> bool:
             Path(temporary).unlink(missing_ok=True)
 
 
-def _snapshot(source: Path, destination: Path) -> bool:
-    _prepare(destination)
-    temporary: str | None = None
-    try:
-        with NamedTemporaryFile(
-            dir=destination.parent, prefix=f".{destination.name}.", delete=False
-        ) as handle:
-            temporary = handle.name
-        uri = source.as_uri() + "?mode=ro"
-        with (
-            closing(sqlite3.connect(uri, uri=True)) as source_db,
-            closing(sqlite3.connect(temporary)) as destination_db,
-        ):
-            source_db.backup(destination_db)
-        if destination.is_file() and filecmp.cmp(temporary, destination, shallow=False):
-            return False
-        shutil.copystat(source, temporary, follow_symlinks=False)
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, destination)
-        temporary = None
-        return True
-    finally:
-        if temporary is not None:
-            Path(temporary).unlink(missing_ok=True)
-
-
 def archive(
     destination: Path,
     machine: str,
@@ -204,6 +160,5 @@ def archive(
         results.setdefault(source.agent, 0)
         for path, relative in _files(source):
             target = machine_destination / source.agent / relative
-            changed = _snapshot(path, target) if source.sqlite else _copy(path, target)
-            results[source.agent] += changed
+            results[source.agent] += _copy(path, target)
     return results

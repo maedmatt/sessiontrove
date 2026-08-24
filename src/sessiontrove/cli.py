@@ -1,7 +1,6 @@
 """Sessiontrove command-line interface."""
 
 import argparse
-import sqlite3
 import sys
 from pathlib import Path
 
@@ -24,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         results = archive(args.destination, args.machine)
-    except (OSError, sqlite3.Error, ValueError) as error:
+    except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 

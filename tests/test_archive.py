@@ -1,5 +1,4 @@
 import os
-import sqlite3
 from pathlib import Path
 
 import pytest
@@ -18,12 +17,11 @@ def test_source_registry_covers_each_persistent_conversation_store(
     tmp_path: Path,
 ) -> None:
     home = tmp_path / "home"
-    data = tmp_path / "data"
     claude = tmp_path / "claude"
 
     assert default_sources(
         home,
-        {"XDG_DATA_HOME": str(data), "CLAUDE_CONFIG_DIR": str(claude)},
+        {"CLAUDE_CONFIG_DIR": str(claude)},
     ) == (
         Source(
             "claude-code",
@@ -56,19 +54,6 @@ def test_source_registry_covers_each_persistent_conversation_store(
             ("*.jsonl",),
         ),
         Source(
-            "opencode",
-            data / "opencode/storage",
-            Path("storage"),
-            ("*.json",),
-        ),
-        Source(
-            "opencode",
-            data / "opencode/opencode.db",
-            Path("opencode.db"),
-            ("*.db",),
-            sqlite=True,
-        ),
-        Source(
             "pi",
             home / ".pi/agent/sessions",
             Path("sessions"),
@@ -77,11 +62,10 @@ def test_source_registry_covers_each_persistent_conversation_store(
     )
 
 
-def test_archives_complete_provider_layouts_without_unrelated_state(
+def test_archives_complete_agent_layouts_without_unrelated_state(
     tmp_path: Path,
 ) -> None:
     home = tmp_path / "home"
-    data = tmp_path / "data"
     claude = home / ".claude"
 
     write(claude / "history.jsonl", '{"display":"old prompt"}\n')
@@ -97,29 +81,15 @@ def test_archives_complete_provider_layouts_without_unrelated_state(
     write(home / ".codex/session_index.jsonl", "not a conversation")
     write(home / ".codex/auth.json", "secret")
 
-    write(data / "opencode/storage/message/session/message.json", "{}")
-    write(data / "opencode/storage/part/message/part.json", "{}")
-    database = data / "opencode/opencode.db"
-    database.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(database) as connection:
-        connection.execute("CREATE TABLE message (text TEXT)")
-        connection.execute("INSERT INTO message VALUES ('conversation')")
-    write(data / "opencode/auth.json", "secret")
-
     write(home / ".pi/agent/sessions/project/session.jsonl")
     write(home / ".pi/agent/settings.json", "not a conversation")
 
     destination = tmp_path / "archive"
-    results = archive(
-        destination,
-        MACHINE,
-        default_sources(home, {"XDG_DATA_HOME": str(data)}),
-    )
+    results = archive(destination, MACHINE, default_sources(home, {}))
 
     assert results == {
         "claude-code": 4,
         "codex": 3,
-        "opencode": 3,
         "pi": 1,
     }
     archived = {
@@ -135,17 +105,8 @@ def test_archives_complete_provider_layouts_without_unrelated_state(
         "macbookpro-m4/codex/archived_sessions/archived.jsonl",
         "macbookpro-m4/codex/history.jsonl",
         "macbookpro-m4/codex/sessions/2026/08/24/rollout.jsonl",
-        "macbookpro-m4/opencode/opencode.db",
-        "macbookpro-m4/opencode/storage/message/session/message.json",
-        "macbookpro-m4/opencode/storage/part/message/part.json",
         "macbookpro-m4/pi/sessions/project/session.jsonl",
     }
-    with sqlite3.connect(
-        destination / "macbookpro-m4/opencode/opencode.db"
-    ) as snapshot:
-        assert snapshot.execute("SELECT text FROM message").fetchone() == (
-            "conversation",
-        )
 
 
 def test_machine_directories_keep_shared_archives_separate(tmp_path: Path) -> None:
@@ -197,37 +158,6 @@ def test_reruns_update_changed_sessions_but_keep_deleted_sessions(
     session.unlink()
     assert archive(destination, MACHINE, (source,)) == {"agent": 0}
     assert copied.read_text(encoding="utf-8") == "second version"
-
-
-def test_live_sqlite_wal_is_included_in_the_snapshot(tmp_path: Path) -> None:
-    database = tmp_path / "sessions.db"
-    connection = sqlite3.connect(database)
-    connection.execute("PRAGMA journal_mode=WAL")
-    connection.execute("PRAGMA wal_autocheckpoint=0")
-    connection.execute("CREATE TABLE messages (text TEXT)")
-    connection.execute("INSERT INTO messages VALUES ('hello')")
-    connection.commit()
-    source = Source(
-        "agent",
-        database,
-        Path("sessions.db"),
-        ("*.db",),
-        sqlite=True,
-    )
-    destination = tmp_path / "archive"
-
-    assert archive(destination, MACHINE, (source,)) == {"agent": 1}
-    assert archive(destination, MACHINE, (source,)) == {"agent": 0}
-    snapshot_path = destination / "macbookpro-m4/agent/sessions.db"
-    with sqlite3.connect(snapshot_path) as snapshot:
-        assert snapshot.execute("SELECT text FROM messages").fetchall() == [("hello",)]
-
-    connection.execute("INSERT INTO messages VALUES ('again')")
-    connection.commit()
-    assert archive(destination, MACHINE, (source,)) == {"agent": 1}
-    with sqlite3.connect(snapshot_path) as snapshot:
-        assert snapshot.execute("SELECT count(*) FROM messages").fetchone() == (2,)
-    connection.close()
 
 
 def test_destination_cannot_be_inside_a_source(tmp_path: Path) -> None:
