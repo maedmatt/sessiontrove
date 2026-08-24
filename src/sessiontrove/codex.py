@@ -129,6 +129,8 @@ def _summary(path: Path) -> dict | None:
             if header is None or header.get("type") != "session_meta":
                 return None
             payload = header.get("payload") or {}
+            if isinstance(payload.get("source"), dict):
+                return None  # spawned subagent or auto-review run, not a chat
             preview = _preview(handle)
         size = path.stat().st_size
     except OSError:

@@ -39,6 +39,12 @@ def test_find_discovers_rollouts_in_both_stores(tmp_path: Path) -> None:
         ],
     )
     write(root / "mac/codex/archived_sessions/old.jsonl", [META])
+    subagent = dict(META, payload=dict(META["payload"], source={"subagent": "review"}))
+    write(root / "mac/codex/sessions/2026/08/24/subagent.jsonl", [subagent])
+    guardian = dict(
+        META, payload=dict(META["payload"], source={"subagent": {"other": "guardian"}})
+    )
+    write(root / "mac/codex/sessions/2026/08/24/guardian.jsonl", [guardian])
     write(root / "mac/codex/history.jsonl", [{"text": "prompt"}])
     outside = tmp_path / "outside.jsonl"
     write(outside, [META])
