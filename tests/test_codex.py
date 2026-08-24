@@ -156,3 +156,50 @@ def test_parse_maps_and_deduplicates_the_two_streams(tmp_path: Path) -> None:
     assert parsed["records"][8]["summary"] == "summary of dropped turns"
     assert parsed["records"][9]["customType"] == "turn_aborted"
     assert parsed["records"][10]["raw"] == "broken line"
+
+
+def test_parse_handles_newer_multi_agent_rollouts(tmp_path: Path) -> None:
+    session = tmp_path / "rollout.jsonl"
+    write(
+        session,
+        [
+            META,
+            envelope("world_state", {"full": True, "state": {}}),
+            envelope("inter_agent_communication_metadata", {"x": 1}),
+            envelope("event_msg", {"type": "thread_settings_applied", "settings": {}}),
+            envelope("event_msg", {"type": "sub_agent_activity", "detail": "…"}),
+            envelope(
+                "response_item",
+                {
+                    "type": "agent_message",
+                    "author": "/root/a",
+                    "recipient": "/root/b",
+                    "content": [{"type": "input_text", "text": "NEW_TASK"}],
+                },
+            ),
+            envelope(
+                "response_item",
+                {
+                    "type": "tool_search_call",
+                    "call_id": "call-2",
+                    "arguments": '{"query": "read file"}',
+                },
+            ),
+            envelope(
+                "response_item",
+                {
+                    "type": "tool_search_output",
+                    "call_id": "call-2",
+                    "tools": [{"name": "mcp__x"}],
+                },
+            ),
+        ],
+    )
+
+    parsed = codex.parse(session)
+
+    kinds = [record["kind"] for record in parsed["records"]]
+    assert kinds == ["custom", "assistant", "tool_result"]
+    assert parsed["records"][0]["customType"] == "inter-agent message"
+    assert parsed["records"][1]["parts"][0]["name"] == "tool_search"
+    assert parsed["records"][2]["toolName"] == "tool_search"

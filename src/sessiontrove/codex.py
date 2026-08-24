@@ -25,8 +25,15 @@ _SKIPPED_EVENTS = {
     "agent_reasoning_delta",
     "agent_reasoning_section_break",
     "context_compacted",
+    "thread_settings_applied",
+    "sub_agent_activity",
+    "web_search_end",
+    "patch_apply_end",
+    "mcp_tool_call_end",
+    "image_generation_end",
 }
 _SKIPPED_ITEMS = {"message", "ghost_snapshot"}
+_SKIPPED_RECORDS = {"world_state", "inter_agent_communication_metadata"}
 
 
 def find(root: Path) -> list[tuple[dict, Path]]:
@@ -174,6 +181,8 @@ def _entries(record: dict, tool_names: dict, context: dict) -> list[dict]:
         return _turn_context(payload, context)
     if kind == "compacted":
         return [{"kind": "compaction", "summary": payload.get("message")}]
+    if kind in _SKIPPED_RECORDS:
+        return []
     return [{"kind": "unknown", "raw": record}]
 
 
@@ -231,6 +240,26 @@ def _item(payload: dict, tool_names: dict, context: dict) -> list[dict]:
             "arguments": payload.get("action"),
         }
         return [{"kind": "assistant", "model": model, "parts": [call]}]
+    if kind == "tool_search_call":
+        tool_names[payload.get("call_id")] = "tool_search"
+        call = {
+            "type": "tool_call",
+            "name": "tool_search",
+            "arguments": payload.get("arguments"),
+        }
+        return [{"kind": "assistant", "model": model, "parts": [call]}]
+    if kind == "tool_search_output":
+        text = json.dumps(payload.get("tools"), indent=2)
+        return [
+            {
+                "kind": "tool_result",
+                "toolName": tool_names.get(payload.get("call_id")),
+                "isError": False,
+                "parts": [{"type": "text", "text": text}],
+            }
+        ]
+    if kind == "agent_message":
+        return [{"kind": "custom", "customType": "inter-agent message", "raw": payload}]
     if kind in _SKIPPED_ITEMS:
         return []
     return [{"kind": "unknown", "raw": payload}]
