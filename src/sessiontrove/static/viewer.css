@@ -145,6 +145,24 @@ button:hover { color: var(--text); }
   border-bottom-color: var(--accent);
 }
 
+#filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.filter-chip {
+  padding: 0 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.filter-chip.active { border-color: currentColor; }
+.filter-chip[data-agent="pi"].active { color: var(--tag-pi); }
+.filter-chip[data-agent="claude-code"].active { color: var(--tag-claude); }
+.filter-chip[data-agent="codex"].active { color: var(--tag-codex); }
+
 #session-list {
   margin: 0;
   padding: 6px 0;
@@ -209,7 +227,34 @@ button:hover { color: var(--text); }
 
 #placeholder { color: var(--faint); }
 
-#session > * { max-width: 720px; }
+#session {
+  display: grid;
+  grid-template-columns: minmax(0, 840px) 280px;
+  column-gap: 40px;
+  align-items: start;
+}
+#meta { grid-column: 1; }
+#content { grid-column: 1; min-width: 0; }
+#context {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lh);
+  max-height: calc(100vh - 2 * var(--lh));
+  overflow-y: auto;
+}
+
+@media (max-width: 1240px) {
+  #session { display: block; }
+  #context {
+    position: static;
+    max-height: none;
+    margin: var(--lh) 0;
+  }
+}
 
 #meta h2 {
   margin: 0;
@@ -221,26 +266,32 @@ button:hover { color: var(--text); }
   font-size: 11px;
   word-break: break-all;
 }
-.facts {
+#facts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px 18px;
-  margin-top: 8px;
+  flex-direction: column;
+  gap: 4px;
   font-size: 11px;
 }
+#facts .fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+#facts .fact > span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
 .fact-label {
-  margin-right: 6px;
   color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 10px;
 }
-.fact { color: var(--muted); }
 
 #controls {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
 }
 #controls button {
   padding: 1px 10px;
@@ -256,7 +307,6 @@ button:hover { color: var(--text); }
 /* Branch tree */
 
 #branches {
-  margin-top: var(--lh);
   padding: 10px 14px;
   border: 1px solid var(--border);
 }
@@ -321,7 +371,7 @@ button:hover { color: var(--text); }
 
 /* Conversation */
 
-#conversation { padding-bottom: 40vh; }
+#conversation { padding-bottom: 40vh; margin-top: 4px; }
 
 .record { margin: var(--lh) 0; }
 

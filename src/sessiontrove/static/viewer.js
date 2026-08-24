@@ -5,6 +5,7 @@
 const state = {
   sessions: [],
   filter: "",
+  agentFilter: null,
   session: null,
   activeLeaf: null,
   expanded: false,
@@ -58,11 +59,33 @@ function sessionTitle(summary) {
   return cwd.split("/").filter(Boolean).pop() || cwd;
 }
 
+function renderFilters() {
+  const box = $("filters");
+  const agents = [...new Set(state.sessions.map((s) => s.agent))].sort();
+  box.replaceChildren();
+  box.hidden = agents.length < 2;
+  if (box.hidden) return;
+  for (const agent of agents) {
+    const count = state.sessions.filter((s) => s.agent === agent).length;
+    const chip = el("button", "filter-chip", `${agent} ${count}`);
+    chip.dataset.agent = agent;
+    chip.title = "filter by agent; click again to clear";
+    if (state.agentFilter === agent) chip.classList.add("active");
+    chip.addEventListener("click", () => {
+      state.agentFilter = state.agentFilter === agent ? null : agent;
+      renderFilters();
+      renderSessionList();
+    });
+    box.append(chip);
+  }
+}
+
 function renderSessionList() {
   const list = $("session-list");
   list.replaceChildren();
   const needle = state.filter.trim().toLowerCase();
   for (const summary of state.sessions) {
+    if (state.agentFilter && summary.agent !== state.agentFilter) continue;
     const haystack = [
       summary.title,
       summary.cwd,
@@ -255,7 +278,8 @@ function renderMeta(session) {
   const title = session.meta.title || cwd.split("/").filter(Boolean).pop() || cwd;
   meta.append(el("h2", "", title));
   meta.append(el("div", "meta-path", cwd));
-  const facts = el("div", "facts");
+  const facts = $("facts");
+  facts.replaceChildren();
   const add = (label, value, title) => {
     if (value === undefined || value === null || value === "") return;
     const fact = el("span", "fact");
@@ -281,7 +305,6 @@ function renderMeta(session) {
   const summary = state.sessions.find((s) => s.id === session.id);
   if (summary && summary.machine) add("machine", summary.machine);
   add("session", session.meta.session_id, session.id);
-  meta.append(facts);
 }
 
 /* Conversation */
@@ -752,6 +775,7 @@ async function init() {
     );
     return;
   }
+  renderFilters();
   renderSessionList();
   if (location.hash.length > 1) {
     openSession(decodeURIComponent(location.hash.slice(1)));

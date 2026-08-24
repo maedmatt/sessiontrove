@@ -12,6 +12,7 @@
   <header>
     <h1 id="logo">sessiontrove</h1>
     <input id="search" type="search" placeholder="search" autocomplete="off">
+    <div id="filters" hidden></div>
   </header>
   <ul id="session-list"></ul>
 </aside>
@@ -19,18 +20,23 @@
   <p id="placeholder">Select a session.</p>
   <section id="session" hidden>
     <header id="meta"></header>
-    <div id="controls">
-      <button id="toggle-expand" title="expand everything (e)">expand all</button>
+    <aside id="context">
+      <div id="controls">
+        <button id="toggle-expand" title="expand everything (e)">expand all</button>
+      </div>
+      <div id="facts"></div>
+      <details id="branches" hidden>
+        <summary id="branches-summary">branches</summary>
+        <p id="branches-hint">
+          Points where an edited message split the conversation.
+          The marked path is the one shown below; click a row to switch.
+        </p>
+        <div id="branches-body"></div>
+      </details>
+    </aside>
+    <div id="content">
+      <div id="conversation"></div>
     </div>
-    <details id="branches" hidden>
-      <summary id="branches-summary">branches</summary>
-      <p id="branches-hint">
-        Points where an edited message split the conversation.
-        The marked path is the one shown below; click a row to switch.
-      </p>
-      <div id="branches-body"></div>
-    </details>
-    <div id="conversation"></div>
   </section>
 </main>
 <script src="/static/viewer.js"></script>
