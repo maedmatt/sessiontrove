@@ -7,8 +7,7 @@ const state = {
   filter: "",
   session: null,
   activeLeaf: null,
-  showThinking: false,
-  showTools: false,
+  expanded: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -278,6 +277,7 @@ function renderMeta(session) {
 function renderConversation(session) {
   const container = $("conversation");
   container.replaceChildren();
+  if (state.expanded) setExpanded(false);
   let pending = [];
   let sawUser = false;
   const flush = () => {
@@ -498,34 +498,23 @@ function appendParts(target, parts, markdown) {
 
 function collapsible(label, body, cls) {
   const details = el("details", "collapsible" + (cls ? " " + cls : ""));
-  if (cls === "thinking" && state.showThinking) details.open = true;
-  if ((cls === "call" || cls === "output") && state.showTools) details.open = true;
   details.append(el("summary", "", label));
   details.append(body);
   return details;
 }
 
-function toggleAll(kind) {
-  let on;
-  if (kind === "thinking") {
-    state.showThinking = on = !state.showThinking;
-    for (const details of document.querySelectorAll(".collapsible.thinking")) {
-      details.open = on;
-    }
-    $("toggle-thinking").classList.toggle("on", on);
-  } else {
-    state.showTools = on = !state.showTools;
-    const selector = ".collapsible.call, .collapsible.output";
-    for (const details of document.querySelectorAll(selector)) {
-      details.open = on;
-    }
-    $("toggle-tools").classList.toggle("on", on);
+function toggleExpand() {
+  setExpanded(!state.expanded);
+}
+
+function setExpanded(expanded) {
+  state.expanded = expanded;
+  for (const details of document.querySelectorAll("#conversation details")) {
+    details.open = expanded;
   }
-  if (on) {
-    for (const details of document.querySelectorAll(".activity")) {
-      details.open = true;
-    }
-  }
+  const button = $("toggle-expand");
+  button.textContent = expanded ? "collapse all" : "expand all";
+  button.classList.toggle("on", expanded);
 }
 
 /* Minimal markdown renderer. Builds DOM nodes only, never HTML strings. */
@@ -740,11 +729,9 @@ async function init() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.target.closest("input") || event.metaKey || event.ctrlKey) return;
-    if (event.key === "t") toggleAll("thinking");
-    if (event.key === "o") toggleAll("tools");
+    if (event.key === "e") toggleExpand();
   });
-  $("toggle-thinking").addEventListener("click", () => toggleAll("thinking"));
-  $("toggle-tools").addEventListener("click", () => toggleAll("tools"));
+  $("toggle-expand").addEventListener("click", toggleExpand);
   try {
     state.sessions = await fetchJSON("/api/sessions");
   } catch (error) {

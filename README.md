@@ -34,9 +34,10 @@ This starts a read-only server on `127.0.0.1` with an automatic port and opens
 the browser. Use `--port` to pick a port and `--no-browser` to only print the
 URL. The viewer shows a searchable session list and, per session, the
 conversation, reasoning, tool calls and results, the branch tree, and basic
-metadata such as model and cost. Reasoning and tool output are collapsible,
-one block at a time or all at once with the `t` and `o` keys, and records the
-viewer does not recognize fall back to their raw JSON. It follows the system
+metadata such as model and cost. What the agent did within a turn starts
+collapsed behind a one-line summary; open blocks one at a time, or everything
+at once with the expand-all button or the `e` key. Records the viewer does
+not recognize fall back to their raw JSON. It follows the system
 light or dark preference and ships the [Fira Code](https://github.com/tonsky/FiraCode)
 font, which is redistributed under the SIL Open Font License.
 
