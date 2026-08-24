@@ -25,6 +25,19 @@ SESSION_LINES = [
 ]
 
 
+CLAUDE_LINES = [
+    {
+        "type": "user",
+        "uuid": "u1",
+        "parentUuid": None,
+        "sessionId": "sess-2",
+        "timestamp": "2026-08-21T10:00:00.000Z",
+        "cwd": "/home/user/project",
+        "message": {"role": "user", "content": "hello claude"},
+    },
+]
+
+
 @pytest.fixture
 def archive_root(tmp_path: Path) -> Path:
     root = tmp_path / "archive"
@@ -32,6 +45,11 @@ def archive_root(tmp_path: Path) -> Path:
     session.parent.mkdir(parents=True)
     session.write_text(
         "".join(json.dumps(line) + "\n" for line in SESSION_LINES), encoding="utf-8"
+    )
+    claude = root / "mac/claude-code/projects/proj/b.jsonl"
+    claude.parent.mkdir(parents=True)
+    claude.write_text(
+        "".join(json.dumps(line) + "\n" for line in CLAUDE_LINES), encoding="utf-8"
     )
     secret = tmp_path / "secret.jsonl"
     secret.write_text(
@@ -75,13 +93,16 @@ def test_binds_to_localhost_and_serves_locked_down_pages(server: ViewerServer) -
     assert headers["Content-Type"].startswith("text/javascript")
 
 
-def test_lists_and_parses_sessions_on_demand(server: ViewerServer) -> None:
+def test_lists_and_parses_sessions_from_every_reader(server: ViewerServer) -> None:
     status, _, body = get(server, "/api/sessions")
     assert status == 200
     sessions = json.loads(body)
-    assert [s["id"] for s in sessions] == ["mac/pi/sessions/project/a.jsonl"]
-    assert sessions[0]["machine"] == "mac"
-    assert sessions[0]["preview"] == "hello"
+    assert [(s["agent"], s["id"]) for s in sessions] == [
+        ("claude-code", "mac/claude-code/projects/proj/b.jsonl"),
+        ("pi", "mac/pi/sessions/project/a.jsonl"),
+    ]
+    assert sessions[1]["machine"] == "mac"
+    assert sessions[1]["preview"] == "hello"
 
     status, _, body = get(server, "/api/session?id=mac/pi/sessions/project/a.jsonl")
     assert status == 200
@@ -89,6 +110,12 @@ def test_lists_and_parses_sessions_on_demand(server: ViewerServer) -> None:
     assert parsed["agent"] == "pi"
     assert parsed["meta"]["cwd"] == "/home/user/project"
     assert [record["kind"] for record in parsed["records"]] == ["user"]
+
+    status, _, body = get(
+        server, "/api/session?id=mac/claude-code/projects/proj/b.jsonl"
+    )
+    assert status == 200
+    assert json.loads(body)["agent"] == "claude-code"
 
 
 def test_rejects_traversal_symlinks_and_unknown_paths(server: ViewerServer) -> None:

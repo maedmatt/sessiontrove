@@ -43,9 +43,12 @@ font, which is redistributed under the SIL Open Font License.
 
 The viewer never modifies the archive: sessions are parsed in memory only when
 opened, symlinks are ignored, and files outside the archive are never served.
-It currently reads Pi sessions; readers for the other agents can be added
-later. It serves no external resources and makes no network requests beyond
-your own localhost.
+It serves no external resources and makes no network requests beyond your own
+localhost.
+
+The interface is agent-neutral: each agent has a small reader that adapts its
+native session format to the records the viewer renders. Pi and Claude Code
+readers exist today; a Codex reader can be added the same way.
 
 ## Supported agents
 

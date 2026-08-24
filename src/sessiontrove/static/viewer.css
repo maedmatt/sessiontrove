@@ -169,6 +169,13 @@ button:hover { color: var(--text); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.session-agent {
+  flex-shrink: 0;
+  color: var(--faint);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 .session-age {
   color: var(--faint);
   font-size: 11px;

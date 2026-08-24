@@ -53,6 +53,7 @@ function fmtAge(value) {
 /* Session list */
 
 function sessionTitle(summary) {
+  if (summary.title) return summary.title;
   const cwd = summary.cwd || summary.name || summary.id;
   return cwd.split("/").filter(Boolean).pop() || cwd;
 }
@@ -62,7 +63,14 @@ function renderSessionList() {
   list.replaceChildren();
   const needle = state.filter.trim().toLowerCase();
   for (const summary of state.sessions) {
-    const haystack = [summary.cwd, summary.preview, summary.machine, summary.name]
+    const haystack = [
+      summary.title,
+      summary.cwd,
+      summary.preview,
+      summary.machine,
+      summary.name,
+      summary.agent,
+    ]
       .join(" ")
       .toLowerCase();
     if (needle && !haystack.includes(needle)) continue;
@@ -72,6 +80,7 @@ function renderSessionList() {
     }
     const line = el("div", "session-line");
     line.append(el("span", "session-title", sessionTitle(summary)));
+    line.append(el("span", "session-agent", summary.agent));
     const age = el("span", "session-age", fmtAge(summary.started));
     age.title = fmtDate(summary.started);
     line.append(age);
@@ -241,7 +250,8 @@ function renderMeta(session) {
   const meta = $("meta");
   meta.replaceChildren();
   const cwd = session.meta.cwd || session.id;
-  meta.append(el("h2", "", cwd.split("/").filter(Boolean).pop() || cwd));
+  const title = session.meta.title || cwd.split("/").filter(Boolean).pop() || cwd;
+  meta.append(el("h2", "", title));
   meta.append(el("div", "meta-path", cwd));
   const facts = el("div", "facts");
   const add = (label, value, title) => {
