@@ -66,6 +66,13 @@ def test_source_registry_covers_each_persistent_conversation_store(
             ("*",),
             ("*.lock", "*.tmp"),
         ),
+        Source(
+            "omp",
+            home / ".omp/agent/blobs",
+            Path("blobs"),
+            ("*",),
+            ("*.lock", "*.tmp"),
+        ),
     )
 
 
@@ -96,6 +103,7 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
     write(home / ".omp/agent/sessions/project/session/worker.md")
     write(home / ".omp/agent/sessions/project/session/1.bash.log")
     write(home / ".omp/agent/sessions/project/session.jsonl.lock", "ephemeral")
+    write(home / ".omp/agent/blobs/sha256")
     write(home / ".omp/agent/history.db", "not a conversation")
 
     destination = tmp_path / "archive"
@@ -105,7 +113,7 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
         "claude-code": 4,
         "codex": 3,
         "pi": 1,
-        "omp": 4,
+        "omp": 5,
     }
     archived = {
         path.relative_to(destination).as_posix()
@@ -125,6 +133,7 @@ def test_archives_complete_agent_layouts_without_unrelated_state(
         "macbookpro-m4/omp/sessions/project/session/worker.jsonl",
         "macbookpro-m4/omp/sessions/project/session/worker.md",
         "macbookpro-m4/omp/sessions/project/session/1.bash.log",
+        "macbookpro-m4/omp/blobs/sha256",
     }
 
 
@@ -137,7 +146,7 @@ def test_omp_honors_custom_agent_directory(tmp_path: Path) -> None:
             tmp_path / "home", {"PI_CODING_AGENT_DIR": str(agent_dir)}
         )
         if source.agent == "omp"
-    ] == [agent_dir / "sessions"]
+    ] == [agent_dir / "sessions", agent_dir / "blobs"]
 
 
 def test_discovers_and_archives_openclaw_session_directories(tmp_path: Path) -> None:
