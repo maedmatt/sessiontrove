@@ -1,35 +1,23 @@
 from pathlib import Path
 
+from sessiontrove.archive import Source
 from sessiontrove.cli import main
 
 
-def test_main_reports_updates(tmp_path: Path, monkeypatch, capsys) -> None:
-    monkeypatch.setattr(
-        "sessiontrove.cli.archive",
-        lambda destination: {"pi": 2, "codex": 1},
-    )
-
-    assert main([str(tmp_path / "archive")]) == 0
-    assert capsys.readouterr().out.splitlines() == [
-        "codex: 1 files updated",
-        "pi: 2 files updated",
-    ]
-
-
-def test_main_reports_when_no_session_store_exists(
+def test_command_archives_sessions_and_reports_updates(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
-    monkeypatch.setattr("sessiontrove.cli.archive", lambda destination: {})
+    session = tmp_path / "source/session.jsonl"
+    session.parent.mkdir()
+    session.write_text("conversation", encoding="utf-8")
+    source = Source("pi", session.parent, Path("sessions"), ("*.jsonl",))
+    monkeypatch.setattr(
+        "sessiontrove.archive.default_sources",
+        lambda: (source,),
+    )
+    destination = tmp_path / "archive"
 
-    assert main([str(tmp_path / "archive")]) == 1
-    assert "no supported session stores found" in capsys.readouterr().err
-
-
-def test_main_reports_archive_errors(tmp_path: Path, monkeypatch, capsys) -> None:
-    def fail(destination: Path) -> dict[str, int]:
-        raise OSError("copy failed")
-
-    monkeypatch.setattr("sessiontrove.cli.archive", fail)
-
-    assert main([str(tmp_path / "archive")]) == 1
-    assert "error: copy failed" in capsys.readouterr().err
+    assert main([str(destination), "--machine", "macbookpro-m4"]) == 0
+    assert capsys.readouterr().out == "pi: 1 files updated\n"
+    archived = destination / "macbookpro-m4/pi/sessions/session.jsonl"
+    assert archived.read_text() == "conversation"

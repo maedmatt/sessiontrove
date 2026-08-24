@@ -12,11 +12,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Archive local coding-agent sessions without changing the originals."
     )
-    parser.add_argument("destination", type=Path, help="private archive directory")
+    parser.add_argument(
+        "destination", type=Path, help="private shared archive directory"
+    )
+    parser.add_argument(
+        "--machine",
+        required=True,
+        help="stable name for this machine, such as macbookpro-m4",
+    )
     args = parser.parse_args(argv)
 
     try:
-        results = archive(args.destination)
+        results = archive(args.destination, args.machine)
     except (OSError, sqlite3.Error, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

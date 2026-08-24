@@ -3,6 +3,7 @@
 import filecmp
 import fnmatch
 import os
+import re
 import shutil
 import sqlite3
 from collections.abc import Mapping, Sequence
@@ -19,6 +20,9 @@ class Source:
     target: Path
     patterns: tuple[str, ...]
     sqlite: bool = False
+
+
+_SAFE_MACHINE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def default_sources(
@@ -38,11 +42,23 @@ def default_sources(
             Path("projects"),
             ("*.jsonl", "agent-*.meta.json"),
         ),
+        Source(
+            "claude-code",
+            claude_home / "history.jsonl",
+            Path("history.jsonl"),
+            ("*.jsonl",),
+        ),
         Source("codex", home / ".codex/sessions", Path("sessions"), ("*.jsonl",)),
         Source(
             "codex",
             home / ".codex/archived_sessions",
             Path("archived_sessions"),
+            ("*.jsonl",),
+        ),
+        Source(
+            "codex",
+            home / ".codex/history.jsonl",
+            Path("history.jsonl"),
             ("*.jsonl",),
         ),
         Source(
@@ -158,10 +174,16 @@ def _snapshot(source: Path, destination: Path) -> bool:
 
 
 def archive(
-    destination: Path, sources: Sequence[Source] | None = None
+    destination: Path,
+    machine: str,
+    sources: Sequence[Source] | None = None,
 ) -> dict[str, int]:
-    """Archive changed session files and return update counts by agent."""
+    """Archive changed session files under one machine directory."""
 
+    if not _SAFE_MACHINE.fullmatch(machine):
+        raise ValueError(
+            "machine must contain only letters, numbers, dots, dashes, and underscores"
+        )
     destination = _absolute(destination)
     sources = default_sources() if sources is None else sources
     for source in sources:
@@ -171,13 +193,17 @@ def archive(
 
     destination.mkdir(parents=True, exist_ok=True)
     os.chmod(destination, 0o700)
+    machine_destination = destination / machine
+    machine_destination.mkdir(exist_ok=True)
+    os.chmod(machine_destination, 0o700)
+
     results: dict[str, int] = {}
     for source in sources:
         if not _absolute(source.path).exists():
             continue
         results.setdefault(source.agent, 0)
         for path, relative in _files(source):
-            target = destination / source.agent / relative
+            target = machine_destination / source.agent / relative
             changed = _snapshot(path, target) if source.sqlite else _copy(path, target)
             results[source.agent] += changed
     return results
