@@ -66,13 +66,25 @@ def test_find_walks_personas_and_labels_sessions(tmp_path: Path) -> None:
     assert found[0][0]["preview"] == "check the weather"
 
 
-def test_find_hides_heartbeat_sessions(tmp_path: Path) -> None:
+def test_find_hides_machine_initiated_sessions(tmp_path: Path) -> None:
     root = tmp_path / "archive"
     sessions = root / "mac/openclaw/agents/main/sessions"
     write(sessions / "chat.jsonl", session_lines("s1", "real conversation"))
     write(
         sessions / "beat.jsonl",
         session_lines("s2", "[OpenClaw heartbeat poll] Read HEARTBEAT.md"),
+    )
+    write(
+        sessions / "cron.jsonl",
+        session_lines("s3", "[cron:2419be77-a364] Run the umbrella check."),
+    )
+    write(
+        sessions / "supervisor.jsonl",
+        session_lines("s4", "[SUPERVISOR:ATTENTION] Process every item."),
+    )
+    write(
+        sessions / "control.jsonl",
+        session_lines("s5", "Control-plane task id: sable-supervisor-x"),
     )
 
     found = openclaw.find(root)

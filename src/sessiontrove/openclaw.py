@@ -4,9 +4,10 @@ OpenClaw stores Pi-format sessions per agent persona under
 ``openclaw/agents/<name>/sessions``. Trajectory logs and migration
 artifacts living in the same directories lack the Pi session header and
 are skipped by the shared core. Each persona's ``sessions.json`` index
-labels some sessions; the persona name is the fallback title. Heartbeat
-polls are hidden, and user messages that OpenClaw wrote twice on
-delivery retries are collapsed to one.
+labels some sessions; the persona name is the fallback title.
+Machine-initiated sessions (heartbeat polls, cron jobs, supervisor
+wakes, control-plane tasks) are hidden, and user messages that OpenClaw
+wrote twice on delivery retries are collapsed to one.
 """
 
 import json
@@ -15,7 +16,12 @@ from pathlib import Path
 
 from . import pi
 
-_HEARTBEAT = "[OpenClaw heartbeat poll]"
+_MACHINE_PREFIXES = (
+    "[OpenClaw heartbeat poll]",
+    "[cron:",
+    "[SUPERVISOR",
+    "Control-plane task id:",
+)
 
 
 def find(root: Path) -> list[tuple[dict, Path]]:
@@ -38,7 +44,8 @@ def find(root: Path) -> list[tuple[dict, Path]]:
                 continue
             labels = _labels(sessions / "sessions.json")
             for summary, path in pi.scan_directory(sessions, root, "openclaw", machine):
-                if summary.get("preview", "").startswith(_HEARTBEAT):
+                preview = summary.get("preview", "")
+                if preview.startswith(_MACHINE_PREFIXES):
                     continue
                 summary["title"] = (
                     summary.get("title")
