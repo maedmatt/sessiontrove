@@ -30,7 +30,7 @@ sessiontrove ~/Backups/agent-sessions --machine macbookpro-m4
 | --- | --- |
 | Claude Code | Project transcripts and `history.jsonl` under `$CLAUDE_CONFIG_DIR` or `~/.claude` |
 | Codex | `~/.codex/sessions`, `~/.codex/archived_sessions`, and `~/.codex/history.jsonl` |
-| Oh My Pi (OMP) | `sessions` under `$PI_CODING_AGENT_DIR` or `~/.omp/agent` |
+| Oh My Pi (OMP) | `sessions` and referenced media `blobs` under `$PI_CODING_AGENT_DIR` or `~/.omp/agent` |
 | OpenClaw | Every agent's `sessions` directory under `$OPENCLAW_STATE_DIR/agents` or `~/.openclaw/agents` |
 | Pi | `~/.pi/agent/sessions` |
 

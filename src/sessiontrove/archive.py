@@ -94,6 +94,13 @@ def default_sources(
             ("*",),
             ("*.lock", "*.tmp"),
         ),
+        Source(
+            "omp",
+            omp_home / "blobs",
+            Path("blobs"),
+            ("*",),
+            ("*.lock", "*.tmp"),
+        ),
         *openclaw_sources,
     )
 
