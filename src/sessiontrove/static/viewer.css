@@ -26,6 +26,7 @@
   --raise: #2a2a2b;
   --text: #c9cdd1;
   --accent: #ec6242;
+  --agent: #6a9bcc;
   --error: #e06c66;
   --muted: color-mix(in srgb, var(--text) 60%, transparent);
   --faint: color-mix(in srgb, var(--text) 38%, transparent);
@@ -40,7 +41,8 @@
     --inset: #bfc3c7;
     --raise: #d5d8db;
     --text: #202020;
-    --accent: #2200cc;
+    --accent: #bc3f24;
+    --agent: #2200cc;
     --error: #a3271e;
   }
 }
@@ -83,6 +85,12 @@ button {
   transition: color 150ms, border-color 150ms;
 }
 button:hover { color: var(--text); }
+
+:focus { outline: none; }
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* Sidebar */
 
@@ -232,15 +240,22 @@ button:hover { color: var(--text); }
 
 #branches {
   margin-top: var(--lh);
-  padding: 12px 14px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
 }
-.branches-title {
-  margin-bottom: 6px;
+#branches > summary {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--faint);
+  cursor: pointer;
+  user-select: none;
+}
+#branches > summary::marker { color: var(--faint); }
+#branches-hint {
+  margin: 8px 0;
+  color: var(--faint);
+  font-size: 11px;
 }
 .segments {
   margin: 0;
@@ -248,9 +263,15 @@ button:hover { color: var(--text); }
   list-style: none;
   border-left: 1px solid var(--border);
 }
-#branches > .segments {
+#branches-body > .segments {
   border-left: none;
   padding-left: 0;
+}
+.segment-mark {
+  flex-shrink: 0;
+  width: 1ch;
+  color: var(--accent);
+  font-size: 9px;
 }
 .segment {
   display: flex;
@@ -305,6 +326,22 @@ time { margin-left: auto; }
   border-left: 2px solid var(--accent);
   padding: 10px 14px;
 }
+
+.record.agent {
+  background: var(--raise);
+  border-left: 2px solid var(--agent);
+  padding: 10px 14px;
+}
+.record.agent .role { color: var(--agent); }
+
+.collapsible.activity { margin: 12px 0; }
+.collapsible.activity > summary { color: var(--faint); }
+.activity-body {
+  margin: 6px 0 6px 2px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+.activity-body .record { margin: 12px 0; }
 
 .record.tool-result, .record.system { margin: 2px 0; }
 

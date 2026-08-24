@@ -181,24 +181,31 @@ function firstText(record) {
 
 function segmentLabel(segment) {
   for (const record of segment.records) {
-    if (record.kind === "user" && firstText(record)) return firstText(record);
+    if (record.kind === "user" && firstText(record)) {
+      return `you: ${firstText(record)}`;
+    }
   }
   for (const record of segment.records) {
     if (firstText(record)) return firstText(record);
   }
-  return segment.records[0].kind || "records";
+  const first = segment.records[0];
+  if (first.kind === "custom") return `custom: ${first.customType || "?"}`;
+  return first.kind || "records";
 }
 
 function renderBranches(session) {
-  const nav = $("branches");
-  nav.replaceChildren();
+  const panel = $("branches");
+  const body = $("branches-body");
+  body.replaceChildren();
   const leaves = session.records.filter(
     (record) => !(session.children.get(record.id) || []).length
   );
-  nav.hidden = leaves.length < 2;
-  if (nav.hidden) return;
-  nav.append(el("div", "branches-title", `Branches (${leaves.length})`));
-  nav.append(renderSegments(session, segmentsFrom(session, session.children.get(null) || [])));
+  panel.hidden = leaves.length < 2;
+  if (panel.hidden) return;
+  $("branches-summary").textContent = `branches (${leaves.length})`;
+  body.append(
+    renderSegments(session, segmentsFrom(session, session.children.get(null) || []))
+  );
 }
 
 function renderSegments(session, segments) {
@@ -207,10 +214,10 @@ function renderSegments(session, segments) {
   for (const segment of segments) {
     const item = el("li");
     const button = el("button", "segment");
-    if (segment.records.some((record) => active.has(record.id))) {
-      button.classList.add("active");
-    }
+    const onPath = segment.records.some((record) => active.has(record.id));
+    if (onPath) button.classList.add("active");
     button.append(
+      el("span", "segment-mark", onPath ? "●" : ""),
       el("span", "segment-count", segment.records.length),
       el("span", "segment-label", segmentLabel(segment))
     );
@@ -238,9 +245,10 @@ function renderMeta(session) {
   meta.append(el("h2", "", cwd.split("/").filter(Boolean).pop() || cwd));
   meta.append(el("div", "meta-path", cwd));
   const facts = el("div", "facts");
-  const add = (label, value) => {
+  const add = (label, value, title) => {
     if (value === undefined || value === null || value === "") return;
     const fact = el("span", "fact");
+    if (title) fact.title = title;
     fact.append(el("span", "fact-label", label), el("span", "", value));
     facts.append(fact);
   };
@@ -259,8 +267,9 @@ function renderMeta(session) {
   add("user messages", users);
   add("records", session.records.length);
   if (cost) add("cost", "$" + cost.toFixed(2));
-  add("file", session.id);
-  add("session", session.meta.session_id);
+  const summary = state.sessions.find((s) => s.id === session.id);
+  if (summary && summary.machine) add("machine", summary.machine);
+  add("session", session.meta.session_id, session.id);
   meta.append(facts);
 }
 
@@ -269,12 +278,96 @@ function renderMeta(session) {
 function renderConversation(session) {
   const container = $("conversation");
   container.replaceChildren();
+  let pending = [];
+  let sawUser = false;
+  const flush = () => {
+    if (!pending.length) return;
+    if (sawUser) {
+      renderTurn(container, pending);
+    } else {
+      for (const record of pending) container.append(renderRecord(record));
+    }
+    pending = [];
+  };
   for (const record of pathTo(session, state.activeLeaf)) {
-    container.append(renderRecord(record));
+    if (record.kind === "user") {
+      flush();
+      sawUser = true;
+      container.append(renderRecord(record));
+    } else {
+      pending.push(record);
+    }
   }
+  flush();
   if (!container.children.length) {
     container.append(el("p", "session-empty", "No records."));
   }
+}
+
+/* One turn: everything the agent did stays collapsed, the final answer
+   gets its own card. */
+function renderTurn(container, records) {
+  let final = null;
+  for (const record of records) {
+    const hasText = (record.parts || []).some(
+      (part) => part.type === "text" && part.text
+    );
+    if (record.kind === "assistant" && hasText) final = record;
+  }
+  const activity = [];
+  for (const record of records) {
+    if (record === final) {
+      const rest = (record.parts || []).filter((part) => part.type !== "text");
+      if (rest.length) activity.push({ ...record, parts: rest });
+    } else {
+      activity.push(record);
+    }
+  }
+  if (activity.length) container.append(renderActivity(activity));
+  if (final) {
+    const answer = {
+      ...final,
+      parts: (final.parts || []).filter((part) => part.type === "text"),
+    };
+    container.append(renderMessage(answer, "agent", final.model || "agent"));
+  }
+}
+
+function renderActivity(records) {
+  let calls = 0;
+  let reasoning = 0;
+  for (const record of records) {
+    if (record.kind !== "assistant") continue;
+    for (const part of record.parts || []) {
+      if (part.type === "tool_call") calls += 1;
+      if (part.type === "thinking") reasoning += 1;
+    }
+  }
+  const bits = [];
+  if (calls) bits.push(`${calls} tool call${calls > 1 ? "s" : ""}`);
+  if (reasoning) bits.push(`${reasoning} reasoning`);
+  if (!bits.length) bits.push(`${records.length} record${records.length > 1 ? "s" : ""}`);
+  const duration = spanDuration(records);
+  if (duration) bits.push(duration);
+  const body = el("div", "activity-body");
+  for (const record of records) body.append(renderRecord(record));
+  const details = el("details", "collapsible activity");
+  details.append(el("summary", "", bits.join(" · ")));
+  details.append(body);
+  return details;
+}
+
+function spanDuration(records) {
+  const times = records
+    .map((record) => new Date(record.timestamp).getTime())
+    .filter((time) => !isNaN(time));
+  if (times.length < 2) return "";
+  const seconds = Math.round((Math.max(...times) - Math.min(...times)) / 1000);
+  if (seconds < 1) return "";
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
 function renderRecord(record) {
@@ -319,7 +412,7 @@ function renderMessage(record, cls, label) {
     head.append(time);
   }
   card.append(head);
-  appendParts(card, record.parts || [], cls === "assistant");
+  appendParts(card, record.parts || [], cls !== "user");
   return card;
 }
 
@@ -413,19 +506,25 @@ function collapsible(label, body, cls) {
 }
 
 function toggleAll(kind) {
+  let on;
   if (kind === "thinking") {
-    state.showThinking = !state.showThinking;
+    state.showThinking = on = !state.showThinking;
     for (const details of document.querySelectorAll(".collapsible.thinking")) {
-      details.open = state.showThinking;
+      details.open = on;
     }
-    $("toggle-thinking").classList.toggle("on", state.showThinking);
+    $("toggle-thinking").classList.toggle("on", on);
   } else {
-    state.showTools = !state.showTools;
+    state.showTools = on = !state.showTools;
     const selector = ".collapsible.call, .collapsible.output";
     for (const details of document.querySelectorAll(selector)) {
-      details.open = state.showTools;
+      details.open = on;
     }
-    $("toggle-tools").classList.toggle("on", state.showTools);
+    $("toggle-tools").classList.toggle("on", on);
+  }
+  if (on) {
+    for (const details of document.querySelectorAll(".activity")) {
+      details.open = true;
+    }
   }
 }
 
